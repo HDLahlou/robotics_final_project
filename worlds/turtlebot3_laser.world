@@ -49,6 +49,8 @@
       <pose>0 0 0.5 0 0 0</pose>
     </include>
 
+    <plugin name="lights" filename="liblights.so"/>
+
     <gui fullscreen="0">
       <camera name="camera">
         <pose>2.90192 -6.64982 2.01951 0 0.199643 1.76019</pose>

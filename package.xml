@@ -16,7 +16,7 @@
   <license>MIT</license>
 
   <export>
-      <gazebo_ros gazebo_plugin_path="${prefix}/plugins"/>
+      <gazebo_ros gazebo_plugin_path="${prefix}/lib"/>
       <gazebo_ros gazebo_model_path="${prefix}/models"/>
       <gazebo_ros gazebo_media_path="${prefix}/media"/>
   </export>
