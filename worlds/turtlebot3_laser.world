@@ -24,15 +24,16 @@
     </spherical_coordinates>
 
     <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <include>
       <uri>model://ground_plane</uri>
-      <pose>0 0 0 0 0 0</pose>
-      <scale>1 1 1</scale>
-      <link name="link">
-        <pose>0 0 0 0 0 0</pose>
-        <velocity>0 0 0 0 0 0</velocity>
-        <acceleration>0 0 0 0 0 0</acceleration>
-        <wrench>0 0 0 0 0 0</wrench>
-      </link>
+    </include>
+
+    <include>
+      <uri>model://spotlight</uri>
+      <pose>0.5 0 1 0 -1 0</pose>
     </include>
 
     <include>
@@ -45,16 +46,6 @@
         <acceleration>0 0 0 0 0 0</acceleration>
         <wrench>0 0 0 0 0 0</wrench>
       </link>
-    </include>
-
-    <include>
-      <uri>model://sun</uri>
-      <pose>0 0 10 0 0 0</pose>
-    </include>
-
-    <include>
-      <uri>model://spotlight</uri>
-      <pose>0.5 0 1 0 -1 0</pose>
     </include>
 
     <gui fullscreen="0">
