@@ -23,29 +23,30 @@
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
 
-    <include>
+    <!-- <include>
       <uri>model://sun</uri>
-    </include>
+    </include> -->
 
     <include>
       <uri>model://ground_plane</uri>
+        <visual name='visual'>
+          <material>
+            <script>
+              <name>Gazebo/White</name>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+            </script>
+          </material>
+      </visual>
     </include>
 
     <include>
       <uri>model://spotlight</uri>
-      <pose>0.5 0 1 0 -1 0</pose>
+      <pose>1.55 1.85 0.25 0 -1.573 3.145</pose>
     </include>
 
     <include>
-      <uri>model://box</uri>
+      <uri>model://loop</uri>
       <pose>0 0 0.5 0 0 0</pose>
-      <scale>1 1 1</scale>
-      <link name="link">
-        <pose>0 0 0.5 0 0 0</pose>
-        <velocity>0 0 0 0 0 0</velocity>
-        <acceleration>0 0 0 0 0 0</acceleration>
-        <wrench>0 0 0 0 0 0</wrench>
-      </link>
     </include>
 
     <gui fullscreen="0">
