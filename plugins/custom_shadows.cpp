@@ -87,10 +87,10 @@ namespace gazebo
       CreateSpotlight(
         manager,
         "spotlight_1",
-        Ogre::ColourValue(1.0, 1.0, 1.0),
-        Ogre::ColourValue(1.0, 1.0, 1.0),
+        Ogre::ColourValue(0.0, 0.495, 0.495),
+        Ogre::ColourValue(0.09, 1.0, 0.09),
         Ogre::Radian(0.20), Ogre::Radian(0.50), 1.00,
-        6.0, 0.80,
+        6.0, 0.40,
         Ogre::Vector3(1.8, 2.0, 0.25),
         Ogre::Vector3(1.0, 0.0, 0.0)
       );
