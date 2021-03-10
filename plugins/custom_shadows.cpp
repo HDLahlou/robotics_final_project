@@ -27,21 +27,26 @@ namespace gazebo
         manager->setShadowTextureSelfShadow(true);
   }
 
-  void CreateLight(
+  void CreateSpotlight(
     Ogre::SceneManager *manager,
     const Ogre::String &name,
-    const Ogre::Light::LightTypes type,
     const Ogre::ColourValue &diffuse,
     const Ogre::ColourValue &specular,
+    const Ogre::Radian &inner_angle,
+    const Ogre::Radian &outer_angle,
+    const Ogre::Real falloff,
+    const float range,
+    const float attenuation,
     const Ogre::Vector3 &position,
     const Ogre::Vector3 &direction
   ) {
         Ogre::Light *light = manager->createLight(name);
+        light->setType(Ogre::Light::LT_SPOTLIGHT);
 
         light->setDiffuseColour(diffuse);
         light->setSpecularColour(specular);
-
-        light->setType(type);
+        light->setSpotlightRange(inner_angle, outer_angle, falloff);
+        light->setAttenuation(range, attenuation, 0.0, 0.0);
         light->setCastShadows(true);
 
         Ogre::SceneNode *node = manager->getRootSceneNode()->createChildSceneNode();
@@ -79,14 +84,15 @@ namespace gazebo
         3, 3, 3
       );
 
-      CreateLight(
+      CreateSpotlight(
         manager,
         "spotlight_1",
-        Ogre::Light::LT_SPOTLIGHT,
-        Ogre::ColourValue(1, 0, 0),
-        Ogre::ColourValue(1, 0, 0),
-        Ogre::Vector3(5, 5, 3),
-        Ogre::Vector3(1, 1, 0.2)
+        Ogre::ColourValue(1.0, 1.0, 1.0),
+        Ogre::ColourValue(1.0, 1.0, 1.0),
+        Ogre::Radian(0.20), Ogre::Radian(0.50), 1.00,
+        6.0, 0.80,
+        Ogre::Vector3(1.8, 2.0, 0.25),
+        Ogre::Vector3(1.0, 0.0, 0.0)
       );
 
       this->initialized = true;

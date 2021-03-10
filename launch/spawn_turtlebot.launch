@@ -4,7 +4,7 @@
   <arg name="init_pose"/>
 
   <param name="robot_description"
-   command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg turtlebot_model).urdf.xacro"/>
+   command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_$(arg turtlebot_model).urdf.xacro"/>
 
   <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
    args="$(arg init_pose) -urdf -param robot_description -model $(arg turtlebot_name)"
