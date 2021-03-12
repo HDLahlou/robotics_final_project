@@ -70,23 +70,27 @@ Msg = Union[Scan]
 
 ### Update ###
 
+DRIVE_VEL_LIN: float = 0.6
+DRIVE_KP_ANG: float = 0.8
+
 TURN_START_DIST: float = 2.0
 TURN_END_DIST: float = 1.0
 
+TURN_VEL_LIN: float = 0.65
+TURN_KP_ANG: float = 1.1
+
 
 def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
-    print(model)
-
     if isinstance(model, Wait):
         return (model, cmd.none)
 
     if isinstance(model, Drive):
-        left_max = max(msg.ranges[60:90], key=lambda r: r.dist)
+        left_max = max(msg.ranges[45:75], key=lambda r: r.dist)
 
         if left_max.dist > TURN_START_DIST:
             return (Turn(Direction.LEFT), cmd.none)
 
-        right_max = max(msg.ranges[270:300], key=lambda r: r.dist)
+        right_max = max(msg.ranges[285:315], key=lambda r: r.dist)
 
         if right_max.dist > TURN_START_DIST:
             return (Turn(Direction.RIGHT), cmd.none)
@@ -94,16 +98,22 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
         left_min = min(msg.ranges[45:135], key=lambda r: r.dist)
         right_min = max(msg.ranges[225:315], key=lambda r: r.dist)
 
+        err_lin = min(left_min.dist - right_min.dist, 1.0)
         err_ang = ((90 - left_min.dir) / 90) + ((270 - right_min.dir) / 90)
+
+        print(err_lin)
+
+        err = 0.7 * err_lin + 0.3 * err_ang
+
         vel_ang = mathf.sign(err_ang) * mathf.smoothstep(
-            low=0, high=0.4, amount=abs(err_ang)
+            low=0, high=DRIVE_KP_ANG, amount=abs(err)
         )
 
-        return (model, [cmd.velocity(angular=vel_ang, linear=0.3)])
+        return (model, [cmd.velocity(angular=vel_ang, linear=DRIVE_VEL_LIN)])
 
-    vel_ang = (1.0 if model.dir == Direction.LEFT else -1.0) * 0.15 * math.pi
+    vel_ang = (1.0 if model.dir == Direction.LEFT else -1.0) * TURN_KP_ANG
     ranges_side = (
-        msg.ranges[70:90] if model.dir == Direction.LEFT else msg.ranges[270:290]
+        msg.ranges[60:80] if model.dir == Direction.LEFT else msg.ranges[280:300]
     )
     range_front = msg.ranges[0]
 
@@ -112,7 +122,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     if all([r.dist < TURN_END_DIST for r in ranges_side]) and range_front.dist > 2.5:
         return (Drive(), cmd.none)
 
-    return (model, [cmd.velocity(angular=vel_ang, linear=0.35)])
+    return (model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
 
 
 ### Subscriptions ###
