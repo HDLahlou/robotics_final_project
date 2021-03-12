@@ -19,12 +19,12 @@
     </include>
   </group>
 
-  <group ns="tb2">
+  <!-- <group ns="tb2">
     <include file="$(find robotics_final_project)/launch/spawn_turtlebot.launch">
       <arg name="turtlebot_model" value="$(arg model)"/>
       <arg name="turtlebot_name" value="tb2"/>
       <arg name="init_pose" value="-x -1.75 -y 1.85 -z 0.0 -Y 0.0"/>
     </include>
-  </group>
+  </group> -->
 
 </launch>
