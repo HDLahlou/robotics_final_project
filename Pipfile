@@ -1,0 +1,29 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[[source]]
+url = "https://rospypi.github.io/simple/"
+verify_ssl = true
+name = "rospypi"
+
+[packages]
+numpy = "*"
+opencv-python = "*"
+cv-bridge = {version = "*", index = "rospypi"}
+geometry-msgs = {version = "*", index = "rospypi"}
+nav-msgs = {version = "*", index = "rospypi"}
+rospy = {version = "*", index = "rospypi"}
+sensor-msgs = {version = "*", index = "rospypi"}
+std-msgs = {version = "*", index = "rospypi"}
+rospy-util = {editable = true, ref = "develop", git = "https://github.com/AHW214/rospy-util.git"}
+
+[dev-packages]
+black = "*"
+
+[requires]
+python_version = "3.8"
+
+[pipenv]
+allow_prereleases = true
