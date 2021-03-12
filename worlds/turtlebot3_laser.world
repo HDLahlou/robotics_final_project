@@ -23,9 +23,9 @@
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
 
-    <!-- <include>
+    <include>
       <uri>model://sun</uri>
-    </include> -->
+    </include>
 
     <include>
       <uri>model://ground_plane</uri>
@@ -37,11 +37,6 @@
             </script>
           </material>
       </visual>
-    </include>
-
-    <include>
-      <uri>model://spotlight</uri>
-      <pose>1.55 1.85 0.25 0 -1.573 3.145</pose>
     </include>
 
     <include>
