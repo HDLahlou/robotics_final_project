@@ -12,20 +12,12 @@
     <arg name="debug" value="false"/>
   </include>
 
-  <!-- <group ns="tb1">
-    <include file="$(find robotics_final_project)/launch/spawn_turtlebot.launch">
-      <arg name="turtlebot_model" value="$(arg model)"/>
-      <arg name="turtlebot_name" value="tb1"/>
-      <arg name="init_pose" value="-x 1.75 -y 1.85 -z 0.0 -Y 3.145"/>
-    </include>
-  </group>
+  <param name="robot_description"
+   command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro"/>
 
-  <group ns="tb2">
-    <include file="$(find robotics_final_project)/launch/spawn_turtlebot.launch">
-      <arg name="turtlebot_model" value="$(arg model)"/>
-      <arg name="turtlebot_name" value="tb2"/>
-      <arg name="init_pose" value="-x -1.75 -y 1.85 -z 0.0 -Y 0.0"/>
-    </include>
-  </group> -->
+  <node name="laser_turtlebot_publisher" pkg="robot_state_publisher"
+    type="robot_state_publisher" output="screen">
+    <param name="publish_frequency" type="double" value="50.0"/>
+  </node>
 
 </launch>

@@ -25,19 +25,43 @@
 
     <include>
       <uri>model://ground_plane</uri>
-        <visual name='visual'>
-          <material>
-            <script>
-              <name>Gazebo/White</name>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-            </script>
-          </material>
-      </visual>
+      <visual name='visual'>
+        <material>
+          <script>
+            <name>Gazebo/White</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+    </visual>
     </include>
 
     <include>
       <uri>model://loop</uri>
       <pose>0 0 0.5 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://turtlebot</uri>
+      <pose>1.75 1.85 0 0 0 -3.13819</pose>
+      <scale>1 1 1</scale>
+      <link name='base_footprint'>
+        <pose>1.75 1.85 0 0 0 -3.13819</pose>
+        <velocity>0 0 0 0 0 0</velocity>
+        <acceleration>0 0 0 0 0 0</acceleration>
+        <wrench>0 0 0 0 0 0</wrench>
+      </link>
+      <link name='wheel_left_link'>
+        <pose>1.75049 1.706 0.033 -1.57 0 -3.13819</pose>
+        <velocity>0 0 0 0 0 0</velocity>
+        <acceleration>0 0 0 0 0 0</acceleration>
+        <wrench>0 0 0 0 0 0</wrench>
+      </link>
+      <link name='wheel_right_link'>
+        <pose>1.74951 1.994 0.033 -1.57 0 -3.13819</pose>
+        <velocity>0 0 0 0 0 0</velocity>
+        <acceleration>0 0 0 0 0 0</acceleration>
+        <wrench>0 0 0 0 0 0</wrench>
+      </link>
     </include>
 
     <gui fullscreen="0">
