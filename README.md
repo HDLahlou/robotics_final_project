@@ -22,8 +22,8 @@ described in the following section.
 
 ### Gazebo Environments
 
-<img src="media/loop.png" alt="loop" height="250"/>
-<img src="media/maze.png" alt="maze" height="250"/>
+<img src="media/loop.png" alt="loop" width="400"/>
+<img src="media/maze.png" alt="maze" width="400"/>
 
 #### A looping track for tuning movement controls, and a maze for testing path-finding and light evasion.
 
@@ -38,10 +38,10 @@ track manually, and the maze using an
 
 ### Gazebo Lighting (spoilers: not yet a success, but potentially a future one)
 
-<img src="media/spotlight-no-shadow.gif" alt="spotlight no shadow" height="250"/>
-<img src="media/spotlight-shadow.gif" alt="spotlight shadow" height="250"/>
+<img src="media/spotlight-no-shadow.gif" alt="spotlight no shadow" width="400"/>
+<img src="media/spotlight-shadow.gif" alt="spotlight shadow" width="400"/>
 
-#### Comparison of native (left) and modified (right) spotlight shadow casting in Gazebo.
+#### Comparison of native (top) and modified (bottom) spotlight shadow casting in Gazebo.
 
 Our project hinges on dynamic lighting as detected by the robot. While Gazebo
 simulates shadows for directional lights (e.g. the sun), it unfortunately does
@@ -49,7 +49,7 @@ not do so for spotlights and point lights. Such a revelation led to a very abrup
 introduction into Gazebo plugins and the associated C++ API; after a fair amount
 of trial and error, we were able to write [our own plugin](plugins/custom_shadows.cpp)
 for producing spotlight shadows, the results of which are demonstrated in the
-above GIF on the right.
+latter of the above GIFs.
 
 While the creation of our plugin seemed like the end to our issues, we later
 discovered that we were only spawning the custom spotlight within Gazebo's
@@ -61,8 +61,8 @@ in order to focus on sensory controls and the robot implementation itself.
 
 ### Sensory Controls
 
-<img src="media/loop.gif" alt="spotlight no shadow" height="400"/>
-<img src="media/maze-and-lights-2.gif" alt="spotlight no shadow" height="400"/>
+<img src="media/loop.gif" alt="loop" width="400"/>
+<img src="media/maze-and-lights-2.gif" alt="maze and lights" width="400"/>
 
 #### TurtleBot3 running laps and evading ~~emissive spheres~~ lights.
 
