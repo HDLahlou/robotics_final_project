@@ -10,8 +10,8 @@
     </physics>
 
     <scene>
-      <ambient>0.4 0.4 0.4 1</ambient>
-      <background>0.7 0.7 0.7 1</background>
+      <ambient>0.04 0.04 0.04 1</ambient>
+      <background>0 0 0 1</background>
       <shadows>1</shadows>
     </scene>
 
@@ -25,6 +25,7 @@
 
     <include>
       <uri>model://sun</uri>
+      <diffuse>0.04 0.04 0.04 1</diffuse>
     </include>
 
     <include>
