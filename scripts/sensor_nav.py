@@ -2,13 +2,11 @@
 
 # pyright: reportMissingTypeStubs=false
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import IntEnum
-import math
-from typing import Any, List, Tuple, TypeVar, Union
+from functools import partial
+from typing import Any, Callable, List, Tuple, TypeVar, Union
 
-import cv_bridge, cv2
-import numpy as np
 import rospy
 import rospy_util.mathf as mathf
 from rospy_util.turtle_pose import TurtlePose
@@ -17,6 +15,8 @@ import rospy_util.vector2 as v2
 from sensor_msgs.msg import Image, LaserScan
 
 from controller import Cmd, Controller, Sub, cmd, sub
+from perception import CvBridge, ImageBGR, ImageROS, light, image
+from util import compose
 
 T = TypeVar("T")
 
@@ -55,7 +55,7 @@ class Spin:
     angle: float
 
 
-Model = Union[
+State = Union[
     Wait,
     Turn,
     Drive,
@@ -63,7 +63,16 @@ Model = Union[
 ]
 
 
-init_model: Model = Drive()
+@dataclass
+class Model:
+    cv_bridge: CvBridge
+    state: State
+
+
+init_model: Model = Model(
+    cv_bridge=CvBridge(),
+    state=Drive(),
+)
 
 init: Tuple[Model, List[Cmd[Any]]] = (init_model, cmd.none)
 
@@ -81,9 +90,15 @@ class Odom:
     pose: TurtlePose
 
 
+@dataclass
+class Image:
+    image: ImageBGR
+
+
 Msg = Union[
     Scan,
     Odom,
+    Image,
 ]
 
 
@@ -100,29 +115,23 @@ TURN_KP_ANG: float = 1.1
 
 SPIN_KP_ANG: float = 1.0
 
+LIGHT_VAL_MIN: float = 200
+
 
 def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
-    if isinstance(model, Wait):
-        return (model, cmd.none)
-
     if isinstance(msg, Scan):
-        print(msg.ranges[0])
-        if msg.ranges[0].dist < 0.5:
-            print("spin")
-            return (Spin(0), [cmd.stop])
-
-        if isinstance(model, Drive):
+        if isinstance(model.state, Drive):
             left_max = max(msg.ranges[45:75], key=lambda r: r.dist)
 
             if left_max.dist > TURN_START_DIST:
                 print("turn left")
-                return (Turn(Direction.LEFT), cmd.none)
+                return (replace(model, state=Turn(Direction.LEFT)), cmd.none)
 
             right_max = max(msg.ranges[285:315], key=lambda r: r.dist)
 
             if right_max.dist > TURN_START_DIST:
                 print("turn right")
-                return (Turn(Direction.RIGHT), cmd.none)
+                return (replace(model, state=Turn(Direction.RIGHT)), cmd.none)
 
             left_min = min(msg.ranges[45:135], key=lambda r: r.dist)
             right_min = min(msg.ranges[225:315], key=lambda r: r.dist)
@@ -140,11 +149,11 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
             return (model, [cmd.velocity(angular=vel_ang, linear=DRIVE_VEL_LIN)])
 
-        if isinstance(model, Turn):
-            vel_ang = (1.0 if model.dir == Direction.LEFT else -1.0) * TURN_KP_ANG
+        if isinstance(model.state, Turn):
+            vel_ang = (1.0 if model.state.dir == Direction.LEFT else -1.0) * TURN_KP_ANG
             ranges_side = (
                 msg.ranges[60:80]
-                if model.dir == Direction.LEFT
+                if model.state.dir == Direction.LEFT
                 else msg.ranges[280:300]
             )
             range_front = msg.ranges[0]
@@ -154,26 +163,35 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
                 and range_front.dist > 1.5
             ):
                 print("drive")
-                return (Drive(), cmd.none)
+                return (replace(model, state=Drive()), cmd.none)
 
             return (model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
 
         return (model, cmd.none)
 
-    # if isinstance(msg, Odom):
+    if isinstance(msg, Odom):
+        if isinstance(model.state, Spin):
+            err_ang = v2.signed_angle_between(
+                v2.from_angle(msg.pose.yaw),
+                v2.from_angle(model.state.angle),
+            )
 
-    if isinstance(model, Spin):
-        err_ang = v2.signed_angle_between(
-            v2.from_angle(msg.pose.yaw),
-            v2.from_angle(model.angle),
-        )
+            print("err_ang: ", err_ang)
 
-        print("err_ang: ", err_ang)
+            if abs(err_ang) < 1e-2:
+                return (replace(model, state=Drive()), cmd.none)
 
-        if abs(err_ang) < 1e-2:
-            return (Drive(), cmd.none)
+            return (model, [cmd.turn(SPIN_KP_ANG * err_ang)])
 
-        return (model, [cmd.turn(SPIN_KP_ANG * err_ang)])
+        return (model, cmd.none)
+
+    # if isinstance(msg, Image):
+
+    (val_max, _) = light.locate_brightest(msg.image)
+
+    if val_max >= LIGHT_VAL_MIN:
+        print("spin")
+        return (replace(model, state=Spin(0)), cmd.none)
 
     return (model, cmd.none)
 
@@ -189,11 +207,19 @@ def delta_angle(pose: TurtlePose, target: Vector2) -> float:
 ### Subscriptions ###
 
 
-def subscriptions(_: Model) -> List[Sub[Any, Msg]]:
+def subscriptions(model: Model) -> List[Sub[Any, Msg]]:
     return [
         sub.laser_scan(angled_ranges),
         sub.odometry(Odom),
+        sub.image_sensor(to_image_cv2(model.cv_bridge)),
     ]
+
+
+def to_image_cv2(cvBridge: CvBridge) -> Callable[[ImageROS], Msg]:
+    """
+    Convert a ROS image message to a CV2 image in BGR format.
+    """
+    return compose(Image, partial(image.from_ros_image, cvBridge))
 
 
 def angled_ranges(scan: LaserScan) -> Msg:
