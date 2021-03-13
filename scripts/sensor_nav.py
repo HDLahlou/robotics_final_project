@@ -88,11 +88,13 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
         left_max = max(msg.ranges[45:75], key=lambda r: r.dist)
 
         if left_max.dist > TURN_START_DIST:
+            print("turn left")
             return (Turn(Direction.LEFT), cmd.none)
 
         right_max = max(msg.ranges[285:315], key=lambda r: r.dist)
 
         if right_max.dist > TURN_START_DIST:
+            print("turn right")
             return (Turn(Direction.RIGHT), cmd.none)
 
         left_min = min(msg.ranges[45:135], key=lambda r: r.dist)
@@ -100,8 +102,6 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
         err_lin = min(left_min.dist - right_min.dist, 1.0)
         err_ang = ((90 - left_min.dir) / 90) + ((270 - right_min.dir) / 90)
-
-        print(err_lin)
 
         err = 0.7 * err_lin + 0.3 * err_ang
 
@@ -117,9 +117,8 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     )
     range_front = msg.ranges[0]
 
-    print(model.dir)
-
-    if all([r.dist < TURN_END_DIST for r in ranges_side]) and range_front.dist > 2.5:
+    if all([r.dist < TURN_END_DIST for r in ranges_side]) and range_front.dist > 1.5:
+        print("drive")
         return (Drive(), cmd.none)
 
     return (model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
