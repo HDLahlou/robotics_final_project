@@ -18,20 +18,4 @@
    args="-x -2.5 -y 1.2 -z 0.0 -Y 3.145 -urdf -param robot_description -model $(arg model)"
    respawn="false" output="screen"/>
 
-  <!-- <group ns="tb1">
-    <include file="$(find robotics_final_project)/launch/spawn_turtlebot.launch">
-      <arg name="turtlebot_model" value="$(arg model)"/>
-      <arg name="turtlebot_name" value="tb1"/>
-      <arg name="init_pose" value="-x 1.75 -y 1.85 -z 0.0 -Y 3.145"/>
-    </include>
-  </group>
-
-  <group ns="tb2">
-    <include file="$(find robotics_final_project)/launch/spawn_turtlebot.launch">
-      <arg name="turtlebot_model" value="$(arg model)"/>
-      <arg name="turtlebot_name" value="tb2"/>
-      <arg name="init_pose" value="-x -1.75 -y 1.85 -z 0.0 -Y 0.0"/>
-    </include>
-  </group> -->
-
 </launch>

@@ -2,9 +2,9 @@
 Robot perception.
 """
 
-import perception.light as light
 from perception.image import CvBridge, Image, ImageBGR, ImageROS
 import perception.image as image
+import perception.light as light
 
 __all__ = (
     "CvBridge",

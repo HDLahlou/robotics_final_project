@@ -12,6 +12,7 @@ __all__ = (
     "approx_zero",
     "compose",
     "head",
+    "lerp_signed",
     "set_under_abs",
 )
 
