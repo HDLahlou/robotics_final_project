@@ -26,7 +26,7 @@
     <light name='sun' type='directional'>
       <cast_shadows>1</cast_shadows>
       <pose>0 0 10 0 -0 0</pose>
-      <diffuse>0.04 0.04 0.04 1</diffuse>
+      <diffuse>0.137 0.177 0.282 1</diffuse>
       <specular>0.2 0.2 0.2 1</specular>
       <attenuation>
         <range>1000</range>
@@ -47,14 +47,28 @@
     </include>
 
     <include>
+      <uri>model://box</uri>
+      <pose>-0.122155 1.14605 0.5 0 0 0</pose>
+      <static>1</static>
+    </include>
+
+    <include>
       <uri>model://orb</uri>
+      <name>orb_1</name>
       <pose>-6.5 3.5 0.25 0 0 0</pose>
+      <static>1</static>
+    </include>
+
+    <include>
+      <uri>model://orb</uri>
+      <name>orb_2</name>
+      <pose>-1.12 -0.98 0.25 0 0 0</pose>
       <static>1</static>
     </include>
 
     <gui fullscreen="0">
       <camera name="camera">
-        <pose>2.90192 -6.64982 2.01951 0 0.199643 1.76019</pose>
+        <pose>-7.773761 -1.635083 9.225962 0 1.075644 0.516191</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
