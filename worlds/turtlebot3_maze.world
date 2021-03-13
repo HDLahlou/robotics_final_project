@@ -49,6 +49,7 @@
     <include>
       <uri>model://orb</uri>
       <pose>-6.5 3.5 0.25 0 0 0</pose>
+      <static>1</static>
     </include>
 
     <gui fullscreen="0">
