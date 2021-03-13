@@ -10,15 +10,13 @@ import random
 from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
 import rospy
-import rospy_util.mathf as mathf
 from rospy_util.turtle_pose import TurtlePose
-from rospy_util.vector2 import Vector2
 import rospy_util.vector2 as v2
 from sensor_msgs.msg import Image, LaserScan
 
 from controller import Cmd, Controller, Sub, cmd, sub
 from perception import CvBridge, ImageBGR, ImageROS, light, image
-from util import compose
+from util import approx_zero, compose, lerp_signed
 
 T = TypeVar("T")
 
@@ -110,33 +108,38 @@ Msg = Union[
 ### Update ###
 
 DRIVE_VEL_LIN: float = 0.6
-DRIVE_KP_ANG: float = 3.0
+DRIVE_VEL_ANG_MAX: float = 3.0
 
 TURN_START_DIST: float = 2.0
 TURN_END_DIST: float = 1.0
 
 TURN_VEL_LIN: float = 0.60
-TURN_KP_ANG: float = 1.3
+TURN_VEL_ANG: float = 1.1
 
 SPIN_VEL_MIN: float = 0.1 * math.pi
 SPIN_VEL_MAX: float = 2.0 * math.pi
 
 LIGHT_VAL_MIN: float = 200
 
+RANGE_LEFT: int = 90
+RANGE_RIGHT: int = 270
+RANGE_OFFSET: int = 45
+
+HALLWAY_WIDTH: float = 1.0
+
 
 def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     if isinstance(msg, Scan):
         if isinstance(model.state, Drive):
-            left_max = max(msg.ranges[45:75], key=lambda r: r.dist)
-            right_max = max(msg.ranges[285:315], key=lambda r: r.dist)
+            forward = msg.ranges[0]
+            left_max = longest_range(msg.ranges[45:75])
+            right_max = longest_range(msg.ranges[285:315])
 
             choices: List[Direction] = [
                 *([Direction.LEFT] if left_max.dist > TURN_START_DIST else []),
                 *([Direction.RIGHT] if right_max.dist > TURN_START_DIST else []),
-                *([Direction.FORWARD] if msg.ranges[0].dist > 1.2 else []),
+                *([Direction.FORWARD] if forward.dist > 0.5 else []),
             ]
-
-            print(choices)
 
             if not choices:
                 return (replace(model, state=Wait()), [cmd.stop])
@@ -144,39 +147,38 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
             direction = random.choice(choices)
 
             if direction == Direction.FORWARD:
-                left_min = min(msg.ranges[45:135], key=lambda r: r.dist)
-                right_min = min(msg.ranges[225:315], key=lambda r: r.dist)
-
-                err_lin = min(left_min.dist - right_min.dist, 1.0)
-                err_ang = ((left_min.dir - 90) / 90) + ((right_min.dir - 270) / 90)
-
-                err = 0.5 * err_lin + 0.5 * err_ang
-
-                vel_ang = mathf.sign(err) * mathf.lerp(
-                    low=0, high=DRIVE_KP_ANG, amount=abs(err)
+                left_min = shortest_range(
+                    msg.ranges[RANGE_LEFT - RANGE_OFFSET : RANGE_LEFT + RANGE_OFFSET]
                 )
 
-                print(vel_ang)
+                right_min = shortest_range(
+                    msg.ranges[RANGE_RIGHT - RANGE_OFFSET : RANGE_RIGHT + RANGE_OFFSET]
+                )
+
+                err_ang_left = (left_min.dir - RANGE_LEFT) / RANGE_OFFSET
+                err_ang_right = (right_min.dir - RANGE_RIGHT) / RANGE_OFFSET
+
+                err_ang = 0.5 * (err_ang_left + err_ang_right)
+                err_lin = (left_min.dist - right_min.dist) / HALLWAY_WIDTH
+
+                err = 0.5 * (err_lin + err_ang)
+                vel_ang = lerp_signed(low=0, high=DRIVE_VEL_ANG_MAX, amount=err)
 
                 return (model, [cmd.velocity(angular=vel_ang, linear=DRIVE_VEL_LIN)])
 
-            print(f"turn {direction.name}")
             return (replace(model, state=Turn(direction)), cmd.none)
 
         if isinstance(model.state, Turn):
-            vel_ang = (1.0 if model.state.dir == Direction.LEFT else -1.0) * TURN_KP_ANG
-            ranges_side = (
-                msg.ranges[60:80]
+            (direction, ranges_side) = (
+                (1.0, msg.ranges[60:80])
                 if model.state.dir == Direction.LEFT
-                else msg.ranges[280:300]
+                else (-1.0, msg.ranges[280:300])
             )
-            range_front = msg.ranges[0]
 
-            if (
-                all([r.dist < TURN_END_DIST for r in ranges_side])
-                and range_front.dist > 1.5
-            ):
-                print("drive")
+            range_front = msg.ranges[0]
+            vel_ang = direction * TURN_VEL_ANG
+
+            if ranges_under(TURN_START_DIST, ranges_side) and range_front.dist > 1.5:
                 return (replace(model, state=Drive()), cmd.none)
 
             return (model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
@@ -207,14 +209,10 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
             err_ang = angle_off / math.pi
 
-            if abs(err_ang) < 1e-2:
-                return (replace(new_model, state=Drive()), cmd.none)
+            if approx_zero(err_ang, epsilon=1e-2):
+                return (replace(new_model, state=Drive()), [cmd.stop])
 
-            vel_ang = mathf.sign(err_ang) * mathf.lerp(
-                SPIN_VEL_MIN,
-                SPIN_VEL_MAX,
-                abs(err_ang),
-            )
+            vel_ang = lerp_signed(SPIN_VEL_MIN, SPIN_VEL_MAX, err_ang)
 
             return (new_model, [cmd.turn(vel_ang)])
 
@@ -223,12 +221,16 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     return (model, cmd.none)
 
 
-def delta_angle(pose: TurtlePose, target: Vector2) -> float:
-    """
-    Compute the angle between the direction of the TurtleBot and the target direction.
-    """
-    direction_facing = v2.from_angle(pose.yaw)
-    return v2.signed_angle_between(target, direction_facing)
+def ranges_under(dist: float, ranges: List[Range]) -> bool:
+    return all([r.dist < dist for r in ranges])
+
+
+def longest_range(ranges: List[Range]) -> Range:
+    return max(ranges, key=lambda r: r.dist)
+
+
+def shortest_range(ranges: List[Range]) -> Range:
+    return min(ranges, key=lambda r: r.dist)
 
 
 ### Subscriptions ###
