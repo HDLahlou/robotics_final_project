@@ -13,12 +13,9 @@ import rospy_util.turtle_pose as tp
 from sensor_msgs.msg import Image, LaserScan
 
 __all__ = (
-    "arm_result",
     "image_sensor",
     "laser_scan",
     "odometry",
-    "optimal_actions",
-    "robot_action",
 )
 
 Msg = TypeVar("Msg")
