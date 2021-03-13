@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from enum import IntEnum
 from functools import partial
 import math
+import random
 from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
 import rospy
@@ -31,6 +32,7 @@ class Range:
 class Direction(IntEnum):
     LEFT = 1
     RIGHT = 2
+    FORWARD = 3
 
 
 ### Model ###
@@ -126,32 +128,40 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     if isinstance(msg, Scan):
         if isinstance(model.state, Drive):
             left_max = max(msg.ranges[45:75], key=lambda r: r.dist)
-
-            if left_max.dist > TURN_START_DIST:
-                print("turn left")
-                return (replace(model, state=Turn(Direction.LEFT)), cmd.none)
-
             right_max = max(msg.ranges[285:315], key=lambda r: r.dist)
 
-            if right_max.dist > TURN_START_DIST:
-                print("turn right")
-                return (replace(model, state=Turn(Direction.RIGHT)), cmd.none)
+            choices: List[Direction] = [
+                *([Direction.LEFT] if left_max.dist > TURN_START_DIST else []),
+                *([Direction.RIGHT] if right_max.dist > TURN_START_DIST else []),
+                *([Direction.FORWARD] if msg.ranges[0].dist > 1.2 else []),
+            ]
 
-            left_min = min(msg.ranges[45:135], key=lambda r: r.dist)
-            right_min = min(msg.ranges[225:315], key=lambda r: r.dist)
+            print(choices)
 
-            err_lin = min(left_min.dist - right_min.dist, 1.0)
-            err_ang = ((left_min.dir - 90) / 90) + ((right_min.dir - 270) / 90)
+            if not choices:
+                return (replace(model, state=Wait()), [cmd.stop])
 
-            err = 0.5 * err_lin + 0.5 * err_ang
+            direction = random.choice(choices)
 
-            vel_ang = mathf.sign(err) * mathf.lerp(
-                low=0, high=DRIVE_KP_ANG, amount=abs(err)
-            )
+            if direction == Direction.FORWARD:
+                left_min = min(msg.ranges[45:135], key=lambda r: r.dist)
+                right_min = min(msg.ranges[225:315], key=lambda r: r.dist)
 
-            print(vel_ang)
+                err_lin = min(left_min.dist - right_min.dist, 1.0)
+                err_ang = ((left_min.dir - 90) / 90) + ((right_min.dir - 270) / 90)
 
-            return (model, [cmd.velocity(angular=vel_ang, linear=DRIVE_VEL_LIN)])
+                err = 0.5 * err_lin + 0.5 * err_ang
+
+                vel_ang = mathf.sign(err) * mathf.lerp(
+                    low=0, high=DRIVE_KP_ANG, amount=abs(err)
+                )
+
+                print(vel_ang)
+
+                return (model, [cmd.velocity(angular=vel_ang, linear=DRIVE_VEL_LIN)])
+
+            print(f"turn {direction.name}")
+            return (replace(model, state=Turn(direction)), cmd.none)
 
         if isinstance(model.state, Turn):
             vel_ang = (1.0 if model.state.dir == Direction.LEFT else -1.0) * TURN_KP_ANG
@@ -180,8 +190,6 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     ):
         (val_max, _) = light.locate_brightest(msg.image)
 
-        print(val_max)
-
         if val_max >= LIGHT_VAL_MIN:
             dir_away = model.pose.yaw + math.pi
             return (replace(model, state=Spin(dir_away)), [cmd.stop])
@@ -199,12 +207,14 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
             err_ang = angle_off / math.pi
 
-            print("err_ang: ", err_ang)
-
             if abs(err_ang) < 1e-2:
                 return (replace(new_model, state=Drive()), cmd.none)
 
-            vel_ang = mathf.lerp(SPIN_VEL_MIN, SPIN_VEL_MAX, err_ang)
+            vel_ang = mathf.sign(err_ang) * mathf.lerp(
+                SPIN_VEL_MIN,
+                SPIN_VEL_MAX,
+                abs(err_ang),
+            )
 
             return (new_model, [cmd.turn(vel_ang)])
 
