@@ -20,6 +20,10 @@ U = TypeVar("U")
 V = TypeVar("V")
 
 
+def lerp_signed(low: float, high: float, amount: float) -> float:
+    return mathf.sign(amount) * mathf.lerp(low, high, abs(amount))
+
+
 def set_under_abs(value: float, low: float) -> float:
     """
     Take the absolute minimum of two numbers, preserving sign.
