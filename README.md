@@ -124,7 +124,7 @@ the pathways such that TurtleBot can only move back and forth between the two
 spheres which it indefinitely avoids.
 
 Code locations and descriptions
-- [`scripts/perception/light.py`](scripts/sensor_nav.py)
+- [`scripts/perception/light.py`](scripts/perception/light.py)
   - Detecting visible lights: `locate_brightest(img)`  
     Receive an image in BGR format. Pre-process the image by 1) converting it
     to grayscale and 2) applying Guassian blur to smooth away high-value noise.
