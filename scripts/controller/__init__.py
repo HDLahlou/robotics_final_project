@@ -2,6 +2,8 @@
 ROS controller interface.
 """
 
+# pyright: reportMissingTypeStubs=false
+
 from rospy_util.controller import Cmd, Controller, Sub
 
 import controller.cmd as cmd
