@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.7">
-  <world name="default">
+  <world name="maze">
     <gravity>0 0 -9.8</gravity>
 
     <physics type="ode">
@@ -28,20 +28,7 @@
     </include>
 
     <include>
-      <uri>model://ground_plane</uri>
-        <visual name='visual'>
-          <material>
-            <script>
-              <name>Gazebo/White</name>
-              <uri>file://media/materials/scripts/gazebo.material</uri>
-            </script>
-          </material>
-      </visual>
-    </include>
-
-    <include>
-      <uri>model://loop</uri>
-      <pose>0 0 0.5 0 0 0</pose>
+      <uri>model://maze</uri>
     </include>
 
     <gui fullscreen="0">
