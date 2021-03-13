@@ -113,8 +113,8 @@ DRIVE_KP_ANG: float = 3.0
 TURN_START_DIST: float = 2.0
 TURN_END_DIST: float = 1.0
 
-TURN_VEL_LIN: float = 0.65
-TURN_KP_ANG: float = 1.1
+TURN_VEL_LIN: float = 0.60
+TURN_KP_ANG: float = 1.3
 
 SPIN_VEL_MIN: float = 0.1 * math.pi
 SPIN_VEL_MAX: float = 2.0 * math.pi
@@ -180,9 +180,11 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     ):
         (val_max, _) = light.locate_brightest(msg.image)
 
+        print(val_max)
+
         if val_max >= LIGHT_VAL_MIN:
             dir_away = model.pose.yaw + math.pi
-            return (replace(model, state=Spin(dir_away)), cmd.none)
+            return (replace(model, state=Spin(dir_away)), [cmd.stop])
 
         return (model, cmd.none)
 
