@@ -5,7 +5,8 @@
 from dataclasses import dataclass, replace
 from enum import IntEnum
 from functools import partial
-from typing import Any, Callable, List, Tuple, TypeVar, Union
+import math
+from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
 import rospy
 import rospy_util.mathf as mathf
@@ -67,11 +68,13 @@ State = Union[
 class Model:
     cv_bridge: CvBridge
     state: State
+    pose: Optional[TurtlePose]
 
 
 init_model: Model = Model(
     cv_bridge=CvBridge(),
     state=Drive(),
+    pose=None,
 )
 
 init: Tuple[Model, List[Cmd[Any]]] = (init_model, cmd.none)
@@ -113,7 +116,8 @@ TURN_END_DIST: float = 1.0
 TURN_VEL_LIN: float = 0.65
 TURN_KP_ANG: float = 1.1
 
-SPIN_KP_ANG: float = 1.0
+SPIN_VEL_MIN: float = 0.1 * math.pi
+SPIN_VEL_MAX: float = 2.0 * math.pi
 
 LIGHT_VAL_MIN: float = 200
 
@@ -169,29 +173,40 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
         return (model, cmd.none)
 
+    if (
+        isinstance(msg, Image)
+        and isinstance(model.state, Drive)
+        and model.pose is not None
+    ):
+        (val_max, _) = light.locate_brightest(msg.image)
+
+        if val_max >= LIGHT_VAL_MIN:
+            dir_away = model.pose.yaw + math.pi
+            return (replace(model, state=Spin(dir_away)), cmd.none)
+
+        return (model, cmd.none)
+
     if isinstance(msg, Odom):
-        if isinstance(model.state, Spin):
-            err_ang = v2.signed_angle_between(
+        new_model = replace(model, pose=msg.pose)
+
+        if isinstance(new_model.state, Spin):
+            angle_off = v2.signed_angle_between(
                 v2.from_angle(msg.pose.yaw),
-                v2.from_angle(model.state.angle),
+                v2.from_angle(new_model.state.angle),
             )
+
+            err_ang = angle_off / math.pi
 
             print("err_ang: ", err_ang)
 
             if abs(err_ang) < 1e-2:
-                return (replace(model, state=Drive()), cmd.none)
+                return (replace(new_model, state=Drive()), cmd.none)
 
-            return (model, [cmd.turn(SPIN_KP_ANG * err_ang)])
+            vel_ang = mathf.lerp(SPIN_VEL_MIN, SPIN_VEL_MAX, err_ang)
 
-        return (model, cmd.none)
+            return (new_model, [cmd.turn(vel_ang)])
 
-    # if isinstance(msg, Image):
-
-    (val_max, _) = light.locate_brightest(msg.image)
-
-    if val_max >= LIGHT_VAL_MIN:
-        print("spin")
-        return (replace(model, state=Spin(0)), cmd.none)
+        return (new_model, cmd.none)
 
     return (model, cmd.none)
 
