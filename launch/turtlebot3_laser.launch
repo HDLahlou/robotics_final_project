@@ -68,4 +68,10 @@
   <!-- Run a transformation between the robot and its laser -->
   <node pkg="tf" type="static_transform_publisher" name="link3_broadcaster" args="0.0 0.0 0.1016 0 0 0 /base_footprint /camera_rgb_optical_frame 100" />
 
+  <!-- Run a transformation between the robot and its laser -->
+  <node pkg="tf" type="static_transform_publisher" name="link2_broadcaster_tb3" args="-0.1524 0.0 0.1016 0 0 0 /base_footprint /tb3_0/base_scan 100" />
+
+  <!-- Run a transformation between the robot and its laser -->
+  <node pkg="tf" type="static_transform_publisher" name="link3_broadcaster_tb3" args="0.0 0.0 0.1016 0 0 0 /base_footprint  /tb3_0/camera_rgb_optical_frame 100" />
+
 </launch>
