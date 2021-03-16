@@ -1,0 +1,6 @@
+image: maze-1000.png
+resolution: 0.016         # 16 m / 1000 px
+origin: [-8.0, -8.0, 0.0] # 16 x 16 m map; bottom left at (-8, -8)
+occupied_thresh: 0.90
+free_thresh: 0.10
+negate: 0
