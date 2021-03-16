@@ -46,11 +46,11 @@
       <uri>model://maze</uri>
     </include>
 
-    <include>
+    <!-- <include>
       <uri>model://box</uri>
       <pose>-0.122155 1.14605 0.5 0 0 0</pose>
       <static>1</static>
-    </include>
+    </include> -->
 
     <include>
       <uri>model://orb</uri>
