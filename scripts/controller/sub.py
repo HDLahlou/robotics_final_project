@@ -4,7 +4,7 @@ ROS controller subscriptions.
 
 # pyright: reportMissingTypeStubs=false
 
-from typing import Callable, TypeVar
+from typing import Any, Callable, List, TypeVar
 
 from nav_msgs.msg import Odometry
 from rospy_util.controller import Sub
@@ -15,6 +15,7 @@ from sensor_msgs.msg import Image, LaserScan
 __all__ = (
     "image_sensor",
     "laser_scan",
+    "none",
     "odometry",
 )
 
@@ -52,3 +53,6 @@ def image_sensor(to_msg: Callable[[Image], Msg]) -> Sub[Image, Msg]:
         message_type=Image,
         to_msg=to_msg,
     )
+
+
+none: List[Sub[Any, Any]] = []

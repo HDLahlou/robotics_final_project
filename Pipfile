@@ -18,7 +18,7 @@ rospy = {version = "*", index = "rospypi"}
 sensor-msgs = {version = "*", index = "rospypi"}
 std-msgs = {version = "*", index = "rospypi"}
 rospy-util = {editable = true, ref = "develop", git = "https://github.com/AHW214/rospy-util.git"}
-more-itertools = "*"
+genpy = "*"
 
 [dev-packages]
 black = "*"
