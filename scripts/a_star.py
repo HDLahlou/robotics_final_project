@@ -39,7 +39,7 @@ class AStar:
         
         print("Init")
         self.map_flag = False
-        self.init_map_nodes()
+        
         
         # subscribe to the map server
         rospy.Subscriber(self.map_topic, OccupancyGrid, self.get_map)
@@ -55,7 +55,7 @@ class AStar:
 
         self.init_map_nodes()
 
-        self.goal = Cell(8, 5, -1, -1, -1, -1, -1, -1, -1) # the player robot. If successor = goal stop search 
+        self.goal = Cell(0, 0, -1, -1, -1, -1, -1, -1, -1) # the player robot. If successor = goal stop search 
 
         # #init the values for goal 
         # self.goal.i = 0 
@@ -69,7 +69,7 @@ class AStar:
 
         
 
-        self.find_path() 
+        #self.find_path() 
 
     def find_path(self):
         dest_found = False
@@ -183,15 +183,26 @@ class AStar:
     def find_index(self,i,j):
         return (i * self.col_num) + j
 
-    def pos_to_map_data_index(self,y):
-        return int((((y-.5)/self.map.info.resolution) - self.map.info.origin.position.y + self.yrange/2) * self.yrange)
+    def pos_to_map_data_index(self,x, y):
+        y1 = ((((y-.5)/self.map.info.resolution) - self.map.info.origin.position.y + self.yrange/2))
+        x1 = ((((x-.5)/self.map.info.resolution) - self.map.info.origin.position.x + self.xrange/2) * self.xrange)
+        print("x and y")
+        print(x)
+        print(y)
+        print("\n")
+        
+        print("row and col of occpany grid ")
+        print(x1)
+        print(y1)
+        print("\n")
 
+        return int(x1 + y1)
     
     # check which directions you can move in 
     def check_north(self,parent):
             if (parent.i == 0):
                 return False 
-            location = self.pos_to_map_data_index(parent.mapy)
+            location = self.pos_to_map_data_index(parent.mapx, parent.mapy)
             # print(location)
             # print(self.gridsize)
             # for index in range(self.gridsize):
@@ -212,7 +223,7 @@ class AStar:
             if (parent.i == 12):
                 return False
             
-            location = self.pos_to_map_data_index(parent.mapy)
+            location = self.pos_to_map_data_index(parent.mapx,parent.mapy)
 
             # for index in range(10):
             #     val = location + index*self.xrange
@@ -231,7 +242,7 @@ class AStar:
             if (parent.j == 12):
                 return False
             
-            location = self.pos_to_map_data_index(parent.mapy)
+            location = self.pos_to_map_data_index(parent.mapx,parent.mapy)
 
             # for index in range(self.gridsize):
             #     val = location + index
@@ -252,7 +263,7 @@ class AStar:
             if (parent.j == 0):
                 return False
 
-            location = self.pos_to_map_data_index(parent.mapy)
+            location = self.pos_to_map_data_index(parent.mapx,parent.mapy)
             
             # for index in range(self.gridsize):
             #     val = location - index
@@ -278,19 +289,30 @@ class AStar:
         xrange = (self.map.info.width - 60) / 13
         yrange = (self.map.info.height - 60) / 13
         
-        for x in range(13):
-            for y in range(13):
-                cx = ((x)*xrange - ((13/2)*xrange) + self.map.info.origin.position.x)*self.map.info.resolution +.5
-                cy = ((y)*yrange - ((13/2)*yrange) + self.map.info.origin.position.y)*self.map.info.resolution + .5
+        for row in range(1):
+            for col in range(13):
+                cx = ((row)*xrange - ((13/2)*xrange) + self.map.info.origin.position.x)*self.map.info.resolution +.5
+                cy = ((col)*yrange - ((13/2)*yrange) + self.map.info.origin.position.y)*self.map.info.resolution + .5
+                
                 f = -1
                 g = -1
-                if (x == self.starting_position.j and y == self.starting_position.i):
+                if (row == self.starting_position.j and col == self.starting_position.i):
                     f = 0
                     g = 0
-                c = Cell(x, y, cx, cy, -1, -1, f, g, -1)
-                # print( "Created:" + str(c.i) + "," + str(c.j) + " f: " + str(c.f))
+                c = Cell(row, col, cx, cy, -1, -1, f, g, -1)
+                #print( "Created:" + str(c.i) + "," + str(c.j) + " f: " + str(c.f))
+                #print(cx)
+                #print(cy)
 
+                #self.pos_to_map_data_index(cx, cy)
+
+                print("INDEX ON OCC GRID:")
+                print(self.pos_to_map_data_index(cx, cy))
+                
                 # self.open_list.append(c)
+
+
+
                 self.cell_details.append(c)
 
     # trace the path once the destination has been found 
