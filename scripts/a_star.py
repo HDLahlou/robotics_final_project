@@ -28,7 +28,7 @@ class AStar:
 
         # MAP AND NODES __________
 
-        self.starting_position = Cell(0, 0, -1, -1, -1, -1, 0, 0, -1)
+        self.starting_position = Cell(1, 1, -1, -1, -1, -1, 0, 0, -1)
 
     
 
@@ -37,7 +37,7 @@ class AStar:
         self.map_topic = "map"
         self.map = OccupancyGrid()
         
-        print("Init")
+        print("Initiaizing...")
         self.map_flag = False
         
         
@@ -55,7 +55,9 @@ class AStar:
 
         self.init_map_nodes()
 
-        self.goal = Cell(0, 0, -1, -1, -1, -1, -1, -1, -1) # the player robot. If successor = goal stop search 
+        self.starting_position = self.cell_details[0]
+
+        self.goal = Cell(8, 5, -1, -1, -1, -1, -1, -1, -1) # the player robot. If successor = goal stop search 
 
         # #init the values for goal 
         # self.goal.i = 0 
@@ -66,10 +68,19 @@ class AStar:
         # subscribe to odom pose 
         
         self.odom_sub = rospy.Subscriber("odom", Odometry, self.update_odometry)
+        print(self.starting_position.i)
+        print(self.starting_position.j)
 
-        
 
-        #self.find_path() 
+        print(self.check_north(self.starting_position))
+        print("")
+        print(self.check_east(self.starting_position))
+        print("")
+        print(self.check_south(self.starting_position))
+        print("")
+        print(self.check_west(self.starting_position))
+
+        # self.find_path() 
 
     def find_path(self):
         dest_found = False
@@ -138,11 +149,11 @@ class AStar:
             
             # now, check each successor 
             for s in successors: 
-                print(s)
+                #print(s)
                 if (not (s == -1)):
                     if (not self.in_closed_list(s)):
                         # if successor is goal stop search
-                        print( "S:" + str(s.i) + "," + str(s.j) + " f: " + str(s.f))
+                        #print( "S:" + str(s.i) + "," + str(s.j) + " f: " + str(s.f))
 
                         if (s.i == self.goal.i and s.j == self.goal.j):
                             dest_found = True
@@ -153,7 +164,7 @@ class AStar:
                             break; 
 
                         s_index =  self.find_index(s.i, s.j)
-                        print(s_index)
+                        #print(s_index)
                         if self.cell_details[s_index].f == -1 or self.cell_details[s_index].f > s.f: 
                             print("Adding to open list")
 
@@ -186,82 +197,67 @@ class AStar:
     def pos_to_map_data_index(self,x, y):
         y1 = ((((y-.5)/self.map.info.resolution) - self.map.info.origin.position.y + self.yrange/2))
         x1 = ((((x-.5)/self.map.info.resolution) - self.map.info.origin.position.x + self.xrange/2) * self.xrange)
-        print("x and y")
-        print(x)
-        print(y)
-        print("\n")
+        # print("x and y")
+        # print(x)
+        # print(y)
+        # print("\n")
         
-        print("row and col of occpany grid ")
-        print(x1)
-        print(y1)
-        print("\n")
-
+        #print("row and col of occpany grid ")
+        #print(x1)
+       # print(y1)
+        #print("\n")
+        print (int(x1+y1))
         return int(x1 + y1)
     
     # check which directions you can move in 
     def check_north(self,parent):
-            if (parent.i == 0):
-                return False 
+            # if (parent.i == 0):
+            #     print("EDGE")
+            #     return False 
             location = self.pos_to_map_data_index(parent.mapx, parent.mapy)
-            # print(location)
-            # print(self.gridsize)
-            # for index in range(self.gridsize):
-            #     val = location - index*self.xrange
-            #     if val >= 0:
-            #         print(self.map.data[val])
-            #         if self.map.data[val] > 0:
-            #             return False #false, you cannot move north            
-            # return True #true, you can move north 
+           
             # check a grid space away and see if you run into a wall 
             for v in range (location, location - self.xrange * self.gridsize, -self.xrange):
-                print(v)
+                #print(v)
+                if self.map.data[v] > 0:
+                    return False #false, you cannot move north            
+            return True #true, you can move north 
+
+    def check_east(self,parent):
+            # if (parent.j == 12):
+            #     print("EDGE")
+            #     return False
+                
+            
+            location = self.pos_to_map_data_index(parent.mapx,parent.mapy)
+
+            # # check a grid space away and see if you run into a wall 
+            for v in range  (location, location + self.gridsize):
+                #print(v)
+
                 if self.map.data[v] > 0:
                     return False #false, you cannot move north            
             return True #true, you can move north 
 
     def check_south(self,parent):
-            if (parent.i == 12):
-                return False
+            # if (parent.i == 12):
+            #     print("EDGE")
+            #     return False
             
             location = self.pos_to_map_data_index(parent.mapx,parent.mapy)
 
-            # for index in range(10):
-            #     val = location + index*self.xrange
-            #     if val >= 0:
-            #         if self.map.data[val] > 0:
-            #             return False #false, you cannot move north            
-            # return True #true, you can move north
             # # check a grid space away and see if you run into a wall 
             for v in range  (location, location + self.xrange * self.gridsize, self.xrange):
-                print(v)
+                #print(v)
                 if self.map.data[v] > 0:
                     return False #false, you cannot move north           
-            return True #true, you can move north 
-
-    def check_east(self,parent):
-            if (parent.j == 12):
-                return False
-            
-            location = self.pos_to_map_data_index(parent.mapx,parent.mapy)
-
-            # for index in range(self.gridsize):
-            #     val = location + index
-            #     if val >= 0:
-            #         if self.map.data[val] > 0:
-            #             return False #false, you cannot move north            
-            # return True #true, you can move north
-            # # check a grid space away and see if you run into a wall 
-            for v in range  (location, location + self.gridsize):
-                print(v)
-
-                if self.map.data[v] > 0:
-                    return False #false, you cannot move north            
             return True #true, you can move north 
     
     def check_west(self,parent):
 
-            if (parent.j == 0):
-                return False
+            # if (parent.j == 0):
+            #     print("EDGE")
+            #     return False
 
             location = self.pos_to_map_data_index(parent.mapx,parent.mapy)
             
@@ -275,7 +271,7 @@ class AStar:
             #true, you can move north 
             # # check a grid space away and see if you run into a wall 
             for v in range  (location - self.gridsize, location):
-                print(v)
+               #print(v)
 
                 if self.map.data[v] > 0:
                     return False #false, you cannot move north             
@@ -289,7 +285,7 @@ class AStar:
         xrange = (self.map.info.width - 60) / 13
         yrange = (self.map.info.height - 60) / 13
         
-        for row in range(1):
+        for row in range(13):
             for col in range(13):
                 cx = ((row)*xrange - ((13/2)*xrange) + self.map.info.origin.position.x)*self.map.info.resolution +.5
                 cy = ((col)*yrange - ((13/2)*yrange) + self.map.info.origin.position.y)*self.map.info.resolution + .5
@@ -306,8 +302,8 @@ class AStar:
 
                 #self.pos_to_map_data_index(cx, cy)
 
-                print("INDEX ON OCC GRID:")
-                print(self.pos_to_map_data_index(cx, cy))
+                # print("INDEX ON OCC GRID:")
+                #print(self.pos_to_map_data_index(cx, cy))
                 
                 # self.open_list.append(c)
 
@@ -344,11 +340,12 @@ class AStar:
         self.map = data
         self.xrange = self.map.info.width
         self.yrange = self.map.info.height
-        self.gridsize = int((self.xrange - 60)/13)
+        self.gridsize = int((self.xrange - 60)/13)-71 
+        print(self.gridsize) 
         self.map_flag = True
-        print("Call back")
-        print(self.xrange)
-        print(self.yrange)
+        print("get map")
+        # print(self.xrange)
+        #print(self.yrange)
         #print(data)
 
     def update_odometry(self, data):
