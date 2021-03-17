@@ -12,9 +12,12 @@ from functools import partial
 import math
 from typing import Any, Callable, List, Optional, Tuple, Union
 
+import numpy as np
+
 import rospy
 from rospy_util.turtle_pose import TurtlePose
 import rospy_util.vector2 as v2
+import scipy.ndimage as ndi
 from sensor_msgs.msg import LaserScan
 
 from controller import Cmd, Controller, Sub, cmd, sub
@@ -177,7 +180,7 @@ DRIVE_VEL_ANG_MAX: float = 3.0
 
 # Driving conditions
 
-DRIVE_WALL_AHEAD_DIST: float = 1.2
+DRIVE_WALL_AHEAD_DIST: float = 0.5
 
 # Turning movement
 
@@ -209,6 +212,11 @@ RANGE_OFFSET: int = 45
 
 HALLWAY_WIDTH: float = 1.0
 
+# Threshold for detecting sharp range jumps
+
+JUMP_THRESH: float = 0.5
+INFLECTION_THRESH: float = 0.01
+
 
 def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     """
@@ -223,6 +231,9 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
     if isinstance(msg, Scan):
         # Received a message from robot LiDAR.
+
+        print(critical_ranges(msg.ranges))
+        return (model, cmd.none)
 
         if isinstance(model.state, Drive):
             # Compute movement choices.
@@ -264,7 +275,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
                 new_model = replace(model, directions=model.directions[1:])
                 return (transition(new_model, state=Drive()), cmd.none)
 
-            return drive_forward(msg.ranges, model)
+            return (model, [cmd.drive(0.6)])  # drive_forward(msg.ranges, model)
 
         if isinstance(model.state, Turn):
             # Choose sign of velocity and portion of LiDAR ranges for specified
@@ -402,6 +413,68 @@ def shortest_range(ranges: List[Range]) -> Range:
     WARNING: Partial function, will explode if given an empty list.
     """
     return min(ranges, key=lambda r: r.dist)
+
+
+def sharp_jump(ranges: List[Range], i: int) -> bool:
+    """
+    Check if a LiDAR range is a sharp jump from the previous value.
+    """
+    r = ranges[i].dist
+    s = ranges[(i + 1) % 360].dist
+
+    return abs(r - s) > JUMP_THRESH and np.isfinite(r) and np.isfinite(s)
+
+
+def inflection_point(ranges: List[Range], i: int) -> bool:
+    """
+    Check if a LiDAR range is an inflection point.
+    """
+    r = ranges[i]
+    q = ranges[i - 1]
+    s = ranges[(i + 1) % 360]
+
+    rv = v2.scale(v2.from_angle(math.radians(r.dir)), r.dist)
+    qv = v2.scale(v2.from_angle(math.radians(q.dir)), q.dist)
+    sv = v2.scale(v2.from_angle(math.radians(s.dir)), s.dist)
+
+    qr_mag = v2.magnitude(rv - qv)
+    rs_mag = v2.magnitude(sv - rv)
+    sq_mag = v2.magnitude(qv - sv)
+
+    semi_p = (qr_mag + rs_mag + sq_mag) / 2
+
+    triangle_area = math.sqrt(
+        semi_p * (semi_p - qr_mag) * (semi_p - rs_mag) * (semi_p - sq_mag)
+    )
+
+    q_residual = 2 * triangle_area / rs_mag
+    s_residual = 2 * triangle_area / qr_mag
+
+    print(f"angle: {i}; q: {q_residual}; s: {s_residual}")
+    print(f"r_dist: {r.dist}; q_dist: {q.dist}; s_dist: {s.dist}")
+
+    return (
+        # ((r.dist > q.dist and r.dist > s.dist) or (r.dist < q.dist and r.dist < s.dist))
+        (q_residual > INFLECTION_THRESH)
+        and (s_residual > INFLECTION_THRESH)
+    )
+
+
+def critical_ranges(ranges: List[Range]) -> List[Range]:
+    """
+    Get a list of LiDAR ranges where sharp jumps or inflection points occur.
+    """
+
+    # smooth_distances = ndi.gaussian_filter(
+    #     [r.dist for r in ranges],
+    #     sigma=1.0,
+    # )
+
+    # smooth_ranges = [Range(i, d) for i, d in enumerate(smooth_distances)]
+
+    return [
+        r for r in ranges if inflection_point(ranges, r.dir)  # or sharp_jump(ranges, i)
+    ]
 
 
 ### Subscriptions ###
