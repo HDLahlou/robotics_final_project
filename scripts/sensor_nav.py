@@ -10,7 +10,17 @@ from dataclasses import dataclass, replace
 from enum import IntEnum
 from functools import partial
 import math
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 
@@ -23,6 +33,8 @@ from controller import Cmd, Controller, Sub, cmd, sub
 from perception import CvBridge, ImageBGR, ImageROS, image, light
 from util import approx_zero, compose, head, lerp_signed
 
+T = TypeVar("T")
+
 
 @dataclass
 class Range:
@@ -32,6 +44,42 @@ class Range:
 
     dir: int
     dist: float
+
+
+@dataclass
+class Corners(Generic[T]):
+    top_left: T
+    bot_left: T
+    top_right: T
+    bot_right: T
+
+    def __iter__(self) -> Iterator[T]:
+        return iter([self.top_left, self.bot_left, self.bot_right, self.top_right])
+
+    def __setitem__(self, key: int, item: T) -> None:
+        if key == 0:
+            self.top_left = item
+        elif key == 1:
+            self.bot_left = item
+        elif key == 2:
+            self.bot_right = item
+        elif key == 3:
+            self.top_right = item
+
+    def __getitem__(self, key: int) -> T:
+        if key == 0:
+            return self.top_left
+        if key == 1:
+            return self.bot_left
+        if key == 2:
+            return self.bot_right
+        if key == 3:
+            return self.top_right
+
+        raise IndexError("bad corner index")
+
+
+CornerRanges = Corners[Optional[Range]]
 
 
 class Direction(IntEnum):
@@ -47,7 +95,7 @@ class Direction(IntEnum):
 ### Model ###
 
 
-@ dataclass
+@dataclass
 class Stop:
     """
     Stop moving.
@@ -56,29 +104,29 @@ class Stop:
     reason: str
 
 
-@ dataclass
+@dataclass
 class Drive:
     """
     Drive forward.
     """
 
 
-@ dataclass
+@dataclass
 class Turn:
     """
     Turn in the given direction.
     """
 
     dir: Direction
-    corners: List[Optional[Range]]
+    corners: CornerRanges
 
 
-@ dataclass
+@dataclass
 class Cross:
-    corners: List[Optional[Range]]
+    corners: CornerRanges
 
 
-@ dataclass
+@dataclass
 class Spin:
     """
     Spin to face the given absolute angle.
@@ -98,7 +146,7 @@ State = Union[
 ]
 
 
-@ dataclass
+@dataclass
 class Model:
     """
     Model of the robot.
@@ -119,9 +167,6 @@ class Model:
 init_model: Model = Model(
     cv_bridge=CvBridge(),
     directions=[
-        Direction.RIGHT,
-        Direction.LEFT,
-        Direction.RIGHT,
         Direction.FORWARD,
         Direction.RIGHT,
     ],
@@ -135,7 +180,7 @@ init: Tuple[Model, List[Cmd[Any]]] = (init_model, cmd.none)
 ### Messages ###
 
 
-@ dataclass
+@dataclass
 class Scan:
     """
     Scan ranges as measured by robot LiDAR.
@@ -144,7 +189,7 @@ class Scan:
     ranges: List[Range]
 
 
-@ dataclass
+@dataclass
 class Odom:
     """
     Pose of the robot as estimated by odometry.
@@ -153,7 +198,7 @@ class Odom:
     pose: TurtlePose
 
 
-@ dataclass
+@dataclass
 class Image:
     """
     Image taken by the robot camera.
@@ -185,7 +230,7 @@ DRIVE_WALL_AHEAD_DIST: float = 0.5
 # Turning movement
 
 TURN_VEL_LIN: float = 0.60
-TURN_VEL_ANG: float = 1.1
+TURN_VEL_ANG: float = 3.0
 
 # Turning conditions
 
@@ -220,10 +265,7 @@ CORNER_THRESH_ANGLE: float = 15
 CRITICAL_RANGE_LIMIT: float = HALLWAY_WIDTH * 1.8
 CRITICAL_RANGE_ANGLE_DIFF: float = 25
 
-CORNER_ANGLES_ENTRY: List[int] = [15, 50, 310, 345]
-CORNER_ANGLES_EXIT_LEFT: List[int] = [230, 130, 165, 195]
-CORNER_ANGLES_EXIT_RIGHT: List[int] = [165, 195, 230, 130]
-CORNER_ANGLES_EXIT_FORWARD: List[int] = [130, 165, 195, 230]
+CORNER_ANGLES_ENTRY: List[int] = [15, 70, 290, 345]
 CORNER_ANGLE_OFFSET: int = 15
 
 
@@ -241,7 +283,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     if isinstance(msg, Scan):
         # Received a message from robot LiDAR.
 
-        print(critical_ranges(msg.ranges))
+        # print(critical_ranges(msg.ranges))
         # return (model, cmd.none)
 
         if isinstance(model.state, Drive):
@@ -254,8 +296,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
             choices: List[Direction] = [
                 *([Direction.LEFT] if left_max.dist > TURN_START_DIST else []),
                 *([Direction.RIGHT] if right_max.dist > TURN_START_DIST else []),
-                *([Direction.FORWARD] if forward.dist >
-                  DRIVE_WALL_AHEAD_DIST else []),
+                *([Direction.FORWARD] if forward.dist > DRIVE_WALL_AHEAD_DIST else []),
             ]
 
             if not choices:
@@ -288,7 +329,10 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
                 return (transition(new_model, state=Drive()), cmd.none)
 
             # drive_forward(msg.ranges, model)
-            return (model, [cmd.drive(0.6)])
+            err = corner_err(Direction.FORWARD, model.state.corners)
+            vel_ang = err * TURN_VEL_ANG
+
+            return (model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
 
         if isinstance(model.state, Turn):
 
@@ -319,9 +363,12 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
             err = corner_err(model.state.dir, corners)
 
+            print(f"corner_err: {err}")
+
             # Perform turn with computed angular velocity.
 
             vel_ang = err * TURN_VEL_ANG
+            # vel_ang = direction * TURN_VEL_ANG
 
             new_model = replace(model, state=Turn(model.state.dir, corners))
 
@@ -389,11 +436,11 @@ def transition(model: Model, state: State) -> Model:
 
 def drive_forward(ranges: List[Range], model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     left_min = shortest_range(
-        ranges[RANGE_LEFT - RANGE_OFFSET: RANGE_LEFT + RANGE_OFFSET]
+        ranges[RANGE_LEFT - RANGE_OFFSET : RANGE_LEFT + RANGE_OFFSET]
     )
 
     right_min = shortest_range(
-        ranges[RANGE_RIGHT - RANGE_OFFSET: RANGE_RIGHT + RANGE_OFFSET]
+        ranges[RANGE_RIGHT - RANGE_OFFSET : RANGE_RIGHT + RANGE_OFFSET]
     )
 
     # Computer angular and positional errors for current orientation.
@@ -414,7 +461,7 @@ def drive_forward(ranges: List[Range], model: Model) -> Tuple[Model, List[Cmd[An
     return (model, [cmd.velocity(angular=vel_ang, linear=DRIVE_VEL_LIN)])
 
 
-def corner_err(dir: Direction, corners: List[Optional[Range]]) -> float:
+def corner_err(dir: Direction, corners: CornerRanges) -> float:
     """
     Calculate a proportional control value for a turn maneuver based on corner
     locations.
@@ -422,29 +469,29 @@ def corner_err(dir: Direction, corners: List[Optional[Range]]) -> float:
 
     print("corners: ", corners)
 
-    if dir == Direction.LEFT:
-        if corners[0] is not None:
-            return opp_side_err(corners[1], corners[0])
-        elif corners[2] is not None:
-            return adj_side_err(corners[1], corners[2])
-        elif corners[3] is not None:
-            return dia_side_err(corners[1], corners[3])
+    if dir == Direction.LEFT and corners.bot_left is not None:
+        if corners.top_left is not None:
+            return opp_side_err(corners.bot_left, corners.top_left)
+        elif corners.bot_right is not None:
+            return adj_side_err(corners.bot_left, corners.bot_right)
+        elif corners.top_right is not None:
+            return dia_side_err(corners.bot_left, corners.top_right)
 
-    elif dir == Direction.RIGHT:
-        if corners[3] is not None:
-            return opp_side_err(corners[2], corners[3])
-        elif corners[1] is not None:
-            return adj_side_err(corners[2], corners[1])
-        elif corners[0] is not None:
-            return dia_side_err(corners[2], corners[0])
+    elif dir == Direction.RIGHT and corners.bot_right is not None:
+        if corners.top_right is not None:
+            return opp_side_err(corners.bot_right, corners.top_right)
+        elif corners.bot_left is not None:
+            return adj_side_err(corners.bot_right, corners.bot_left)
+        elif corners.top_left is not None:
+            return dia_side_err(corners.bot_right, corners.top_left)
 
     else:
-        if corners[0] is not None and corners[3] is not None:
-            return opp_side_err(corners[0], corners[3])
-        elif corners[0] is not None:
-            return adj_side_err(corners[0], corners[1])
-        elif corners[3] is not None:
-            return adj_side_err(corners[3], corners[2])
+        if corners.top_left is not None and corners.top_right is not None:
+            return opp_side_err(corners.top_left, corners.top_right)
+        elif corners.top_left is not None and corners.bot_left is not None:
+            return adj_side_err(corners.top_left, corners.bot_left)
+        elif corners.top_right is not None and corners.bot_right is not None:
+            return adj_side_err(corners.top_right, corners.bot_right)
 
     return 0
 
@@ -455,8 +502,8 @@ def opp_side_err(pivot_r: Range, opp_r: Range) -> float:
     and the center of a junction exit based on the two corners on either side
     of it.
     """
-    pivot_v = v2.from_angle(math.radians(pivot_r.dir))
-    opp_v = v2.from_angle(math.radians(opp_r.dir))
+    pivot_v = v2_from_range(pivot_r)
+    opp_v = v2_from_range(opp_r)
     return v2.signed_angle_between(pivot_v + opp_v, v2.right) / (math.pi / 2)
 
 
@@ -466,14 +513,18 @@ def adj_side_err(pivot_r: Range, adj_r: Range) -> float:
     and the center of a junction exit based on the two corners on either
     side of an adjacent exit.
     """
-    pivot_v = v2.from_angle(math.radians(pivot_r.dir))
-    adj_v = v2.from_angle(math.radians(adj_r.dir))
+    pivot_v = v2_from_range(pivot_r)
+    adj_v = v2_from_range(adj_r)
     side_v = pivot_v - adj_v
-    if (-180 < pivot_r.dir - adj_v.dir < 180):
-        dest_v = pivot_v + v2.scale(v2.rotate(side_v, math.pi/2), 0.5)
+    if -180 < pivot_r.dir - adj_r.dir < 180:
+        dest_v = pivot_v + v2.scale(v2.rotate(side_v, math.pi / 2), 0.5)
     else:
-        dest_v = pivot_v + v2.scale(v2.rotate(side_v, -math.pi / 2, 0.5))
+        dest_v = pivot_v + v2.scale(v2.rotate(side_v, -math.pi / 2), 0.5)
     return v2.signed_angle_between(dest_v, v2.right) / (math.pi / 2)
+
+
+def v2_from_range(r: Range) -> v2.Vector2:
+    return v2.scale(v2.from_angle(math.radians(r.dir)), r.dist)
 
 
 def dia_side_err(pivot_r: Range, dia_r: Range) -> float:
@@ -482,16 +533,18 @@ def dia_side_err(pivot_r: Range, dia_r: Range) -> float:
     and the center of a junction exit based on two corners opposite
     each other.
     """
-    pivot_v = v2.from_angle(math.radians(pivot_r.dir))
-    dia_v = v2.from_angle(math.radians(dia_r.dir))
+    pivot_v = v2_from_range(pivot_r)
+    dia_v = v2_from_range(dia_r)
     mid_v = v2.scale(pivot_v + dia_v, 0.5)
-    if (pivot_r.dir > 180):
-        dest_v = mid_v + \
-            v2.scale(v2.rotate(pivot_v - mid_v, -math.pi / 4), 1 / math.sqrt(2))
+    if pivot_r.dir > 180:
+        dest_v = mid_v + v2.scale(
+            v2.rotate(pivot_v - mid_v, math.pi / 4), 1 / math.sqrt(2)
+        )
     else:
-        dest_v = mid_v + \
-            v2.scale(v2.rotate(pivot_v - mid_v, math.pi / 4), 1 / math.sqrt(2))
-    return v2.signed_angle_between(dest_v, v2.right) / (math.pi / 2)
+        dest_v = mid_v + v2.scale(
+            v2.rotate(pivot_v - mid_v, -math.pi / 4), 1 / math.sqrt(2)
+        )
+    return v2.signed_angle_between(v2.right, dest_v) / (math.pi / 2)
 
 
 def ranges_under(dist: float, ranges: List[Range]) -> bool:
@@ -523,9 +576,10 @@ def sharp_jump(ranges: List[Range], i: int) -> bool:
     Check if a LiDAR range is a sharp jump from the previous value.
     """
     r = ranges[i].dist
+    q = ranges[i - 1].dist
     s = ranges[(i + 1) % 360].dist
 
-    return abs(r - s) > JUMP_THRESH
+    return (r - s) > JUMP_THRESH or (r - q) > JUMP_THRESH
 
 
 def corner(ranges: List[Range], i: int) -> bool:
@@ -536,17 +590,16 @@ def corner(ranges: List[Range], i: int) -> bool:
     q = ranges[i - 5]
     s = ranges[(i + 5) % 360]
 
-    rv = v2.scale(v2.from_angle(math.radians(r.dir)), r.dist)
-    qv = v2.scale(v2.from_angle(math.radians(q.dir)), q.dist)
-    sv = v2.scale(v2.from_angle(math.radians(s.dir)), s.dist)
+    rv = v2_from_range(r)
+    qv = v2_from_range(q)
+    sv = v2_from_range(s)
 
     qs_dist = v2.magnitude(sv - qv)
 
     central_angle = math.degrees(v2.signed_angle_between(qv - rv, sv - rv))
 
-    return (
-        (abs(abs(central_angle) - 90) <
-         CORNER_THRESH_ANGLE) and (qs_dist < CORNER_THRESH_DIST)
+    return (abs(abs(central_angle) - 90) < CORNER_THRESH_ANGLE) and (
+        qs_dist < CORNER_THRESH_DIST
     )
 
 
@@ -556,13 +609,21 @@ def critical_ranges(ranges: List[Range]) -> List[Range]:
     """
 
     potential_ranges = [
-        r for r in ranges if r.dist < CRITICAL_RANGE_LIMIT and (sharp_jump(ranges, r.dir) or corner(ranges, r.dir))
+        r
+        for r in ranges
+        if r.dist < CRITICAL_RANGE_LIMIT
+        and (sharp_jump(ranges, r.dir) or corner(ranges, r.dir))
     ]
 
-    return [r for i, r in enumerate(potential_ranges) if (potential_ranges[i].dir - potential_ranges[i - 1].dir) % 360 > CRITICAL_RANGE_ANGLE_DIFF]
+    return [
+        r
+        for i, r in enumerate(potential_ranges)
+        if (potential_ranges[i].dir - potential_ranges[i - 1].dir) % 360
+        > CRITICAL_RANGE_ANGLE_DIFF
+    ]
 
 
-def track_corners(ranges: List[Range]) -> List[Optional[Range]]:
+def track_corners(ranges: List[Range]) -> CornerRanges:
     """
     Create a list of corner ranges for use when passing through a junction.
     When entering the junction, each corner is mapped to a list element:
@@ -573,33 +634,39 @@ def track_corners(ranges: List[Range]) -> List[Optional[Range]]:
     """
 
     crit_ranges = critical_ranges(ranges)
-    corners = [None, None, None, None]
+    corners = CornerRanges(None, None, None, None)
 
-    print(crit_ranges)
+    forward_ranges = [r for r in crit_ranges if 150 > r.dir or r.dir > 210]
 
-    for r in crit_ranges:
-        for i in range(4):
-            print(f"r.dir: {r.dir}; CAE: {CORNER_ANGLES_ENTRY[i]}")
-            if corners[i] is None and abs(r.dir - CORNER_ANGLES_ENTRY[i]) < CORNER_ANGLE_OFFSET:
-                corners[i] = r
+    for r in forward_ranges:
+        min_corner = min(range(4), key=lambda x: abs(CORNER_ANGLES_ENTRY[x] - r.dir))
+        if corners[min_corner] is None:
+            corners[min_corner] = r
 
+    print("Tracking corners: ", corners)
     return corners
 
 
-def update_corners(corners: List[Optional[Range]], ranges: List[Range]) -> List[Optional[Range]]:
+def update_corners(corners: CornerRanges, ranges: List[Range]) -> CornerRanges:
     """
     Update a list of corners during a turn.
     """
 
     crit_ranges = critical_ranges(ranges)
-    new_corners = [None, None, None, None]
 
-    for r in crit_ranges:
-        for i in range(4):
-            if corners[i] is not None and abs(r.dir - corners[i].dir) < CRITICAL_RANGE_ANGLE_DIFF and new_corners[i] is None:
-                new_corners[i] = r
+    if not crit_ranges:
+        return corners
+    print("crit_ranges: ", crit_ranges)
+    new_corners = CornerRanges(None, None, None, None)
+
+    for i in range(4):
+        if (corner := corners[i]) is not None:
+            min_range = min(crit_ranges, key=lambda r: abs(r.dir - corner.dir))
+            if not min_range in new_corners:
+                new_corners[i] = min_range
 
     return new_corners
+
 
 ### Subscriptions ###
 
