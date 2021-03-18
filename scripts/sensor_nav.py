@@ -68,6 +68,7 @@ class Turn:
     """
 
     dir: Direction
+    angle: float
 
 
 @dataclass
@@ -119,7 +120,8 @@ init_model: Model = Model(
         Direction.RIGHT,
         Direction.LEFT,
         Direction.RIGHT,
-        Direction.FORWARD,
+        Direction.RIGHT,
+        Direction.LEFT,
         Direction.RIGHT,
     ],
     state=Drive(),
@@ -221,7 +223,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     if (direction := head(model.directions)) is None:
         return (replace(model, state=Stop("out of directions")), cmd.none)
 
-    if isinstance(msg, Scan):
+    if isinstance(msg, Scan) and model.pose is not None:
         # Received a message from robot LiDAR.
 
         if isinstance(model.state, Drive):
@@ -237,10 +239,10 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
                 *([Direction.FORWARD] if forward.dist > DRIVE_WALL_AHEAD_DIST else []),
             ]
 
-            if not choices:
-                return (transition(model, state=Stop("dead end")), cmd.none)
+            # if not choices:
+            #     return (transition(model, state=Stop("dead end")), cmd.none)
 
-            if choices == [Direction.FORWARD]:
+            if not choices or choices == [Direction.FORWARD]:
                 return drive_forward(msg.ranges, model)
 
             if direction not in choices:
@@ -254,9 +256,10 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
             # Turning left or right; transition to turn state.
 
-            return (transition(model, state=Turn(direction)), cmd.none)
+            return (transition(model, state=Turn(direction, model.pose.yaw)), cmd.none)
 
         if isinstance(model.state, Cross):
+
             ranges_left = msg.ranges[80:100]
             ranges_right = msg.ranges[260:280]
 
@@ -276,11 +279,17 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
                 else (-1.0, msg.ranges[280:300])
             )
 
-            range_front = msg.ranges[0]
+            angle_off = v2.signed_angle_between(
+                v2.from_angle(model.pose.yaw),
+                v2.from_angle(direction * (math.pi / 2.0) + model.state.angle),
+            )
 
-            if (
-                ranges_under(TURN_END_DIST, ranges_side)
-                and range_front.dist > TURN_WALL_AHEAD_DIST
+            err_ang = angle_off / math.pi
+
+            print(model.pose.yaw, angle_off, err_ang)
+
+            if ranges_under(TURN_END_DIST, ranges_side) and approx_zero(
+                err_ang, epsilon=0.1
             ):
                 # Wall is close to side of bot, no obstructions ahead; assume turn is over
                 # and transition to driving state.
@@ -289,7 +298,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
             # Perform turn with computed angular velocity.
 
-            vel_ang = direction * TURN_VEL_ANG
+            vel_ang = 4.0 * err_ang * TURN_VEL_ANG
 
             return (model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
 
