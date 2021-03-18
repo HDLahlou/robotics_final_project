@@ -7,6 +7,7 @@ import math
 from typing import Any, List, Tuple, Union
 
 import rospy
+import rospy_util.mathf as mathf
 from rospy_util.turtle_pose import TurtlePose
 from rospy_util.vector2 import Vector2
 import rospy_util.vector2 as v2
@@ -68,6 +69,9 @@ Msg = Union[Odom]
 
 ### Update ###
 
+DRIVE_VEL_LIN: float = 0.6
+DRIVE_VEL_ANG_MAX: float = 1.5 * math.pi
+
 GRID_SIDE_LEN: float = 14.754
 GRID_NUM_CELLS: int = 13
 GRID_ORIGIN: Vector2 = v2.scale(Vector2(GRID_SIDE_LEN, GRID_SIDE_LEN), -0.5)
@@ -85,19 +89,26 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     if (next_cell := head(model.path)) is None:
         return (transition(model, state=Wait()), cmd.none)
 
-    print(grid.locate_pose(GRID, msg.pose))
-
     to_cell = grid.next_cell_direction(GRID, msg.pose, next_cell)
+    err_ang = to_cell / math.pi
 
     if isinstance(model.state, Orient):
-        if approx_zero(err_ang := to_cell / math.pi):
+        if approx_zero(err_ang):
             return (transition(model, state=Drive()), [cmd.stop])
 
         vel_ang = lerp_signed(0.05 * math.pi, 1.0 * math.pi, err_ang)
 
         return (model, [cmd.turn(vel_ang)])
 
-    return (model, [cmd.drive(0.6)])
+    cell_offset = grid.current_cell_offset(GRID, msg.pose)
+    err_lin = cell_offset / GRID.len_cell
+
+    err = 0.5 * (err_ang + err_lin)
+
+    vel_ang = lerp_signed(low=0, high=DRIVE_VEL_ANG_MAX, amount=err)
+    vel_lin = mathf.lerp(low=0.6, high=0.2, amount=10.0 * abs(err))
+
+    return (model, [cmd.velocity(angular=vel_ang, linear=vel_lin)])
 
 
 def transition(model: Model, state: State) -> Model:
