@@ -39,6 +39,7 @@ class AStar:
         
         print("Initiaizing...")
         self.map_flag = False
+        self.nodes_flag = False 
         
         
         # subscribe to the map server
@@ -55,9 +56,15 @@ class AStar:
 
         self.init_map_nodes()
 
-        self.starting_position = self.cell_details[0]
+        while (not self.nodes_flag):
+            pass
 
-        self.goal = Cell(8, 5, -1, -1, -1, -1, -1, -1, -1) # the player robot. If successor = goal stop search 
+        self.starting_position = self.cell_details[1]
+
+
+    
+
+        self.goal = Cell(1, 2, -1, -1, -1, -1, -1, -1, -1) # the player robot. If successor = goal stop search 
 
         # #init the values for goal 
         # self.goal.i = 0 
@@ -72,29 +79,36 @@ class AStar:
         print(self.starting_position.j)
 
 
-        print(self.check_north(self.starting_position))
-        print("")
-        print(self.check_east(self.starting_position))
-        print("")
-        print(self.check_south(self.starting_position))
-        print("")
+        print(self.check_north(self.starting_position))      
+        print(self.check_east(self.starting_position)) 
+        print(self.check_south(self.starting_position))      
         print(self.check_west(self.starting_position))
 
-        # self.find_path() 
+        self.find_path() 
 
     def find_path(self):
         dest_found = False
-        self.open_list.append(self.starting_position)
-        # while open lit is not empty 
+        self.open_list.append(self.cell_details[self.find_index(self.starting_position.i, self.starting_position.j)])
+        
+        # while open list is not empty 
         while len(self.open_list) > 0:
             # q = node with smallest f
             # https://stackoverflow.com/questions/5320871/in-list-of-dicts-find-min-value-of-a-common-dict-field
             
-            q = min(self.open_list, key=lambda x:x.f)
-            print( "Node:" + str(q.i) + "," + str(q.j) + " f: " + str(q.f))
+            q_temp = min(self.open_list, key=lambda x:x.f)
+            q = self.cell_details[self.find_index(q_temp.i, q_temp.j)]
+           
             # pop q
-            
-            self.open_list.remove(q)
+            print(q.mapy)
+            print(q.mapx)
+            print(self.pos_to_map_data_index(q.mapx, q.mapy))
+            print(self.check_north(q))      
+            print(self.check_east(q)) 
+            print(self.check_south(q))      
+            print(self.check_west(q))
+
+
+            self.open_list.remove(q_temp)
             
             # generate q's 8 successors and set their parent to q
             successors = [-1,-1,-1,-1]
@@ -151,7 +165,12 @@ class AStar:
             for s in successors: 
                 #print(s)
                 if (not (s == -1)):
+                    s_index =  self.find_index(s.i, s.j)
+                    print( "Node:" + str(s.i) + "," + str(s.j) + " f: " + str(s.f))
+                    print(self.cell_details[s_index].f)
+
                     if (not self.in_closed_list(s)):
+                        
                         # if successor is goal stop search
                         #print( "S:" + str(s.i) + "," + str(s.j) + " f: " + str(s.f))
 
@@ -163,10 +182,13 @@ class AStar:
                             self.cell_details[g_index].parent_j = q.j
                             break; 
 
-                        s_index =  self.find_index(s.i, s.j)
+                        
                         #print(s_index)
                         if self.cell_details[s_index].f == -1 or self.cell_details[s_index].f > s.f: 
-                            print("Adding to open list")
+                            print("Adding to open list:")
+                            print(s.i)
+                            print(s.j)
+                            print("")
 
                             self.open_list.append(s)
                             self.cell_details[s_index].f = s.f
@@ -181,7 +203,7 @@ class AStar:
                 break
         
         print("End of search")
-        self.trace_path()
+        #self.trace_path()
 
 
     def in_closed_list(self,cell):
@@ -197,6 +219,7 @@ class AStar:
     def pos_to_map_data_index(self,x, y):
         y1 = ((((y-.5)/self.map.info.resolution) - self.map.info.origin.position.y + self.yrange/2))
         x1 = ((((x-.5)/self.map.info.resolution) - self.map.info.origin.position.x + self.xrange/2) * self.xrange)
+        constshift = 30000 + ((.5)/self.map.info.resolution)
         # print("x and y")
         # print(x)
         # print(y)
@@ -206,8 +229,8 @@ class AStar:
         #print(x1)
        # print(y1)
         #print("\n")
-        print (int(x1+y1))
-        return int(x1 + y1)
+        #print (int(x1+y1))
+        return int(x1 + y1 + constshift)
     
     # check which directions you can move in 
     def check_north(self,parent):
@@ -247,8 +270,11 @@ class AStar:
             location = self.pos_to_map_data_index(parent.mapx,parent.mapy)
 
             # # check a grid space away and see if you run into a wall 
-            for v in range  (location, location + self.xrange * self.gridsize, self.xrange):
+            #print("checking south....")
+            for v in range (location, location + self.xrange * self.gridsize, self.xrange):
                 #print(v)
+                #print(self.map.data[v])
+                #print("what the heck ")
                 if self.map.data[v] > 0:
                     return False #false, you cannot move north           
             return True #true, you can move north 
@@ -276,6 +302,7 @@ class AStar:
                 if self.map.data[v] > 0:
                     return False #false, you cannot move north             
             return True #true, you can move north 
+            
 
     def manhattan_distance(self,current_cell , goal):
         return abs(current_cell.i - goal.i) + abs(current_cell.j - goal.j)
@@ -310,6 +337,8 @@ class AStar:
 
 
                 self.cell_details.append(c)
+        self.nodes_flag = True
+        print("FINISHED INIT NODES")
 
     # trace the path once the destination has been found 
     def trace_path(self):
@@ -340,8 +369,8 @@ class AStar:
         self.map = data
         self.xrange = self.map.info.width
         self.yrange = self.map.info.height
-        self.gridsize = int((self.xrange - 60)/13)-71 
-        print(self.gridsize) 
+        self.gridsize = int((self.xrange - 60)/13)
+        #print(self.gridsize) 
         self.map_flag = True
         print("get map")
         # print(self.xrange)
