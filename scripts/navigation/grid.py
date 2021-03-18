@@ -20,6 +20,28 @@ class Cell:
     col: int
 
 
+def current_cell_offset(grid: Grid, pose: TurtlePose) -> float:
+    current_cell = locate_pose(grid, pose)
+    position = pose.position - grid.origin
+
+    (length, component) = (
+        (current_cell.row, position.y)
+        if facing_horizontal(pose.yaw)
+        else (current_cell.col, position.x)
+    )
+
+    center = (length + 0.5) * grid.len_cell
+
+    return center - component
+
+
+def facing_horizontal(yaw: float) -> bool:
+    # TODO - eh (should encode directions manually)
+    return (
+        math.pi / -4.0 < yaw < math.pi / 4.0 or math.pi / -0.75 < yaw < math.pi / 0.75
+    )
+
+
 def next_cell_direction(
     grid: Grid,
     pose: TurtlePose,
