@@ -22,7 +22,7 @@ from util import approx_zero, head, lerp_signed
 
 @dataclass
 class Wait:
-    pass
+    reason: str
 
 
 @dataclass
@@ -35,10 +35,16 @@ class Drive:
     pass
 
 
+@dataclass
+class Turn:
+    pass
+
+
 State = Union[
     Wait,
     Orient,
     Drive,
+    Turn,
 ]
 
 
@@ -49,7 +55,24 @@ class Model:
 
 
 init_model: Model = Model(
-    path=[Cell(7, 9)],
+    path=[
+        Cell(7, 5),
+        Cell(7, 6),
+        Cell(7, 7),
+        Cell(6, 7),
+        Cell(5, 7),
+        Cell(5, 8),
+        Cell(4, 8),
+        Cell(3, 8),
+        Cell(2, 8),
+        Cell(2, 9),
+        Cell(2, 10),
+        Cell(3, 10),
+        Cell(3, 9),
+        Cell(4, 9),
+        Cell(4, 10),
+        Cell(4, 11),
+    ],
     state=Orient(),
 )
 
@@ -69,8 +92,12 @@ Msg = Union[Odom]
 
 ### Update ###
 
-DRIVE_VEL_LIN: float = 0.6
+DRIVE_VEL_LIN_MAX: float = 0.6
+DRIVE_VEL_LIN_MIN: float = 0.6
 DRIVE_VEL_ANG_MAX: float = 1.5 * math.pi
+
+TURN_VEL_LIN: float = 0.5
+TURN_VEL_ANG: float = 1.8 * math.pi
 
 GRID_SIDE_LEN: float = 14.754
 GRID_NUM_CELLS: int = 13
@@ -87,7 +114,24 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
         return (model, [cmd.stop])
 
     if (next_cell := head(model.path)) is None:
-        return (transition(model, state=Wait()), cmd.none)
+        return wait(model, reason="Path is empty")
+
+    current_cell = grid.locate_pose(GRID, msg.pose)
+
+    crossing_cells = current_cell == next_cell
+
+    if crossing_cells:
+        # this is illegal
+        model = replace(model, path=model.path[1:])
+
+        #  this is also illegal
+        if (next_cell := head(model.path)) is None:
+            return wait(model, reason="Path traversed")
+
+        print(f"next cell is {next_cell}")
+
+    if not grid.cells_are_adjacent(current_cell, next_cell):
+        return wait(model, reason="Next cell not adjacent")
 
     to_cell = grid.next_cell_direction(GRID, msg.pose, next_cell)
     err_ang = to_cell / math.pi
@@ -100,15 +144,39 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
         return (model, [cmd.turn(vel_ang)])
 
-    cell_offset = grid.current_cell_offset(GRID, msg.pose)
-    err_lin = cell_offset / GRID.len_cell
+    if isinstance(model.state, Drive):
+        if abs(err_ang) > 0.25:
+            return (transition(model, state=Turn()), cmd.none)
 
-    err = 0.5 * (err_ang + err_lin)
+        cell_offset = grid.current_cell_offset(GRID, msg.pose)
+        err_lin = cell_offset / GRID.len_cell
 
-    vel_ang = lerp_signed(low=0, high=DRIVE_VEL_ANG_MAX, amount=err)
-    vel_lin = mathf.lerp(low=0.6, high=0.2, amount=10.0 * abs(err))
+        err = 0.5 * (err_ang + err_lin)
 
-    return (model, [cmd.velocity(angular=vel_ang, linear=vel_lin)])
+        vel_ang = lerp_signed(
+            low=0,
+            high=DRIVE_VEL_ANG_MAX,
+            amount=err,
+        )
+
+        vel_lin = mathf.lerp(
+            low=DRIVE_VEL_LIN_MAX,
+            high=DRIVE_VEL_LIN_MIN,
+            amount=10.0 * abs(err),
+        )
+
+        return (model, [cmd.velocity(angular=vel_ang, linear=vel_lin)])
+
+    if approx_zero(err_ang):
+        return (transition(model, state=Drive()), cmd.none)
+
+    vel_ang = lerp_signed(0, TURN_VEL_ANG, err_ang)
+
+    return (model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
+
+
+def wait(model: Model, reason: str) -> Tuple[Model, List[Cmd[Any]]]:
+    return (transition(model, state=Wait(reason)), cmd.none)
 
 
 def transition(model: Model, state: State) -> Model:

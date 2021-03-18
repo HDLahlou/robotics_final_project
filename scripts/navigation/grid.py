@@ -36,9 +36,9 @@ def current_cell_offset(grid: Grid, pose: TurtlePose) -> float:
 
 
 def facing_horizontal(yaw: float) -> bool:
-    # TODO - eh (should encode directions manually)
+    # TODO - eh (should encode directions manually) [also looks gross]
     return (
-        math.pi / -4.0 < yaw < math.pi / 4.0 or math.pi / -0.75 < yaw < math.pi / 0.75
+        math.pi / -4.0 < yaw < math.pi / 4.0 or math.pi / -0.75 > yaw > math.pi / 0.75
     )
 
 
@@ -51,6 +51,15 @@ def next_cell_direction(
     dir_absolute = direction_between_cells(current_cell, next_cell)
 
     return v2.signed_angle_between(v2.from_angle(pose.yaw), dir_absolute)
+
+
+def next_cell_adjacent(
+    grid: Grid,
+    pose: TurtlePose,
+    next_cell: Cell,
+) -> bool:
+    current_cell = locate_pose(grid, pose)
+    return cells_are_adjacent(current_cell, next_cell)
 
 
 def direction_between_cells(first: Cell, second: Cell) -> Vector2:
