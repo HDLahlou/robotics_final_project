@@ -47,16 +47,58 @@
     </include>
 
     <!-- <include>
-      <uri>model://box</uri>
-      <pose>-0.122155 1.14605 0.5 0 0 0</pose>
-      <static>1</static>
-    </include> -->
-
-    <include>
       <uri>model://orb</uri>
       <name>orb_1</name>
       <pose>2.73 1.22 0.25 0 0 0</pose>
       <static>1</static>
+    </include> -->
+
+    <include>
+      <uri>model://player</uri>
+      <pose>3.44 1.09 0 0 0 0</pose>
+      <scale>1 1 1</scale>
+      <link name='base_footprint'>
+        <pose>1.75 1.85 0 0 0 0</pose>
+        <velocity>0 0 0 0 0 0</velocity>
+        <acceleration>0 0 0 0 0 0</acceleration>
+        <wrench>0 0 0 0 0 0</wrench>
+      </link>
+      <link name='wheel_left_link'>
+        <pose>1.75049 1.706 0.033 -1.57 0 0</pose>
+        <velocity>0 0 0 0 0 0</velocity>
+        <acceleration>0 0 0 0 0 0</acceleration>
+        <wrench>0 0 0 0 0 0</wrench>
+      </link>
+      <link name='wheel_right_link'>
+        <pose>1.74951 1.994 0.033 -1.57 0 0</pose>
+        <velocity>0 0 0 0 0 0</velocity>
+        <acceleration>0 0 0 0 0 0</acceleration>
+        <wrench>0 0 0 0 0 0</wrench>
+      </link>
+    </include>
+
+    <include>
+      <uri>model://hunter</uri>
+      <pose>-2.5 1.2 0 0 0 3.154</pose>
+      <scale>1 1 1</scale>
+      <link name='base_footprint'>
+        <pose>1.75 1.85 0 0 0 0</pose>
+        <velocity>0 0 0 0 0 0</velocity>
+        <acceleration>0 0 0 0 0 0</acceleration>
+        <wrench>0 0 0 0 0 0</wrench>
+      </link>
+      <link name='wheel_left_link'>
+        <pose>1.75049 1.706 0.033 -1.57 0 0</pose>
+        <velocity>0 0 0 0 0 0</velocity>
+        <acceleration>0 0 0 0 0 0</acceleration>
+        <wrench>0 0 0 0 0 0</wrench>
+      </link>
+      <link name='wheel_right_link'>
+        <pose>1.74951 1.994 0.033 -1.57 0 0</pose>
+        <velocity>0 0 0 0 0 0</velocity>
+        <acceleration>0 0 0 0 0 0</acceleration>
+        <wrench>0 0 0 0 0 0</wrench>
+      </link>
     </include>
 
     <gui fullscreen="0">
