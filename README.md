@@ -18,6 +18,16 @@ For my one week [graduating student] project milestones, I've tried to lay the
 groundwork for environment creation and sensory robot controls, which are
 described in the following section.
 
+
+## How to Run LASER 
+
+(change if needed) We have intialized [] as the starting cell and [] as the goal cell. The goal of this robot is to approach the light from behind 
+These can be changed in (code location). 
+
+Terminal commands
+
+Any necessary package installations? 
+
 ## System Architecture
 
 ### Gazebo Environments
@@ -146,6 +156,12 @@ Code locations and descriptions
     zero, switch to the `Drive` state to begin the movement away from the light.
     Otherwise, compute an angular velocity proportional to the error, and spin
     around with that velocity.
+    
+## A* Search 
+
+Code locations and descriptions
+- [`scripts/a_star.py`](scripts/a_star.py)
+
 
 ## Challenges
 
@@ -168,12 +184,16 @@ handled on Gazebo's server application, and we were almost definitely spawning
 our lights only on the client side (where they were visible to us using the
 application). The work we put it in can perhaps still be salvaged, assuming we
 can spawn corresponding lights on the server side; regardless, the endeavor
-proved a time sink, one for which a good takeaway is in need.
+proved a time sink, one for which a good takeaway is in need. Ultimately, we decided to keep the light spheres; instead of sinking more times into experimenting with Gazebo plugins, we wanted to focus on the actual movement and search capabilities of the robot. 
 
-Another major challenge was how to detect which sides of any given node are blocked by a wall. The OccupancyGrid() data array does not neatly overlay and match the RViz visualization of the map. The OccupancyGrid() is both rotated 90 degrees and has a different origin than the actual map. We 
+Another major challenge was how to detect which sides of any given node are blocked by a wall when performing the A* search. We first tried to convert an `(x,y)` coordinate into its corresponding index of the OccupancyGrid() data array, `self.map.data`. However, trying to get this calculation proved to be extremely frustrating: `self.map.data` has a different origin than the true origin visualized in RViz. Additionally, the occupancy array is rotated from the map alignment we based the rest of our code off of, and it has to be scaled down with `self.map.info.resoltuion`. Our solution was to forgo doing these `(x,y)`-to-occupacy-grid conversions. Instead, we rotated `self.map.data` to the match the orientation of the map, and called this rotated version `self.truemap`. 
+The OccupancyGrid() is both rotated 90 degrees and has a different origin than the actual map. 
 
-### A* Search 
+We used replaced the house map in Particle Filter Project with our maze to help us visualize this rotation. The image below shows the 
 
+<img src="media/occupancy.png" alt="occupancy grid" width="400"/>
+
+The function `node_to_occ`, takes the array indices of a given node and calculates the 
 
 
 ## Takeaways
