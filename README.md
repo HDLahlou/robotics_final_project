@@ -32,9 +32,15 @@ The main components of our project are A* Search and Sensory Controls, a combina
     $ pipenv install
     ```
 
-4) Run our ```setup.launch``` file, which must be run from outside the virtual environment.
+4) Run ```catkin_make``` from your `catkin_ws/src` directory.
+    ```
+    $ cd ~/catkin_ws/src/intro_robo
+    $ catkin_make
+    ```
+6) Run our ```setup.launch``` file, which must be run from outside the virtual environment.
     ```
     $ roslaunch robotics_final_project setup.launch
+    ```
 
 5) Run our teleop controller.
     ```
