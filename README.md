@@ -128,7 +128,7 @@ The function `find_path` finds the shortest path from `starting_position` (monst
 
 - `q` has an array four `successors` in the order of north, east, south, and west. Each successor is intialized as `-1`. 
 
-- `check_north` checks if the robot can go north from `q`. The cell at `[2][2]` in the grid image has a successor to its north and its east, as indicated by the blue arrows. If the robot is not blocked by a wall, create a temporary cell equal to the `Cell` north of of `q`, and set `q` as its parent. Calculate the temporary cell's value of `g`, `h`, and `f`. Lastly, if this temporary cell is not blocked by light (TODO explanation), set the north succssor of this cell equal to `temp_cell`. Otherwise, the successor remains equal to `-1`.
+- `check_north` checks if the robot can go north from `q`. The cell at `[2][2]` in the grid image has a successor to its north and its east, as indicated by the blue arrows. If the robot is not blocked by a wall, create a temporary cell equal to the `Cell` north of of `q`, and set `q` as its parent. Calculate the temporary cell's value of `g`, `h`, and `f`. Lastly, if this temporary cell is not blocked by light, we set the north succssor of this cell equal to `temp_cell`. We determine this by looking at the provided values in `blocked_by_light` and seeing if it any of the entries within the list match the currently observed cell. Otherwise, the successor remains equal to `-1`.
 
 - Repeat this process for the other directions with the functions `check_east`, `check_south`, and `check_west`. 
 
