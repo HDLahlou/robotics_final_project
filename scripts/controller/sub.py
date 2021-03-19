@@ -12,6 +12,8 @@ from rospy_util.turtle_pose import TurtlePose
 import rospy_util.turtle_pose as tp
 from sensor_msgs.msg import Image, LaserScan
 
+from robotics_final_project.msg import Cell, Path
+
 __all__ = (
     "image_sensor",
     "laser_scan",
@@ -20,6 +22,17 @@ __all__ = (
 )
 
 Msg = TypeVar("Msg")
+
+
+def directions(to_msg: Callable[[List[Cell]], Msg]) -> Sub[Path, Msg]:
+    """
+    Receive directions for a path to follow.
+    """
+    return Sub(
+        topic_name="/directions",
+        message_type=Path,
+        to_msg=lambda p: to_msg(p.path),
+    )
 
 
 def odometry(to_msg: Callable[[TurtlePose], Msg]) -> Sub[Odometry, Msg]:

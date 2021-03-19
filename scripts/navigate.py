@@ -15,7 +15,6 @@ import rospy_util.vector2 as v2
 from controller import Cmd, Controller, Sub, cmd, sub
 from navigation.grid import Cell, Grid
 import navigation.grid as grid
-from robotics_final_project.msg import Path
 from util import approx_zero, head, lerp_signed
 
 ### Model ###
@@ -23,21 +22,37 @@ from util import approx_zero, head, lerp_signed
 
 @dataclass
 class Wait:
+    """
+    Wait for directions.
+    """
+
     reason: str
 
 
 @dataclass
 class Orient:
+    """
+    Turn to face the next cell.
+    """
+
     pass
 
 
 @dataclass
 class Drive:
+    """
+    Move forward to the next cell.
+    """
+
     pass
 
 
 @dataclass
 class Turn:
+    """
+    Turn to reach the next cell.
+    """
+
     pass
 
 
@@ -51,30 +66,21 @@ State = Union[
 
 @dataclass
 class Model:
-    path: List[Cell]
+    """
+    Model of the robot.
+
+    @attribute `state`: Current state of the robot.
+
+    @attribute `path`: Path to take to the destination.
+    """
+
     state: State
+    path: List[Cell]
 
 
 init_model: Model = Model(
-    path=[
-        Cell(7, 5),
-        Cell(7, 6),
-        Cell(7, 7),
-        Cell(6, 7),
-        Cell(5, 7),
-        Cell(5, 8),
-        Cell(4, 8),
-        Cell(3, 8),
-        Cell(2, 8),
-        Cell(2, 9),
-        Cell(2, 10),
-        Cell(3, 10),
-        Cell(3, 9),
-        Cell(4, 9),
-        Cell(4, 10),
-        Cell(4, 11),
-    ],
-    state=Orient(),
+    path=[],
+    state=Wait("Awaiting directions..."),
 )
 
 init: Tuple[Model, List[Cmd[Any]]] = (init_model, cmd.none)
@@ -85,10 +91,26 @@ init: Tuple[Model, List[Cmd[Any]]] = (init_model, cmd.none)
 
 @dataclass
 class Odom:
+    """
+    Pose of the robot as estimated by odometry.
+    """
+
     pose: TurtlePose
 
 
-Msg = Union[Odom, Path]
+@dataclass
+class Directions:
+    """
+    Path for the robot to follow.
+    """
+
+    path: List[Cell]
+
+
+Msg = Union[
+    Odom,
+    Directions,
+]
 
 
 ### Update ###
@@ -111,11 +133,24 @@ GRID: Grid = Grid(
 
 
 def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
+    """
+    Given an inbound message and the current robot model, produce a new model
+    and a list of commands to execute.
+    """
+    if isinstance(msg, Directions):
+        if not model.path:
+            if not grid.path_is_valid(msg.path):
+                print("Path is invalid!")
+                return (model, cmd.none)
+
+            new_model = replace(model, path=msg.path)
+            return (transition(new_model, state=Orient()), cmd.none)
+
+        print("Already have directions!")
+        return (model, cmd.none)
+
     if isinstance(model.state, Wait):
         return (model, [cmd.stop])
-
-    if isinstance(msg, Path):
-        return replace(model, path=msg.path)
 
     if (next_cell := head(model.path)) is None:
         return wait(model, reason="Path is empty")
@@ -137,7 +172,12 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     if not grid.cells_are_adjacent(current_cell, next_cell):
         return wait(model, reason="Next cell not adjacent")
 
-    to_cell = grid.next_cell_direction(GRID, msg.pose, next_cell)
+    to_cell = grid.next_cell_direction(
+        cell_current=current_cell,
+        cell_next=next_cell,
+        pose=msg.pose,
+    )
+
     err_ang = to_cell / math.pi
 
     if isinstance(model.state, Orient):
@@ -152,7 +192,13 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
         if abs(err_ang) > 0.25:
             return (transition(model, state=Turn()), cmd.none)
 
-        cell_offset = grid.current_cell_offset(GRID, msg.pose)
+        cell_offset = grid.current_cell_offset(
+            grid=GRID,
+            cell_current=current_cell,
+            cell_next=next_cell,
+            pose=msg.pose,
+        )
+
         err_lin = cell_offset / GRID.len_cell
 
         err = 0.5 * (err_ang + err_lin)
@@ -180,10 +226,16 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
 
 def wait(model: Model, reason: str) -> Tuple[Model, List[Cmd[Any]]]:
+    """
+    Transition the bot to a wait state.
+    """
     return (transition(model, state=Wait(reason)), cmd.none)
 
 
 def transition(model: Model, state: State) -> Model:
+    """
+    Transition to a new state while printing a notification.
+    """
     print(f"Begin {state}")
     return replace(model, state=state)
 
@@ -192,13 +244,22 @@ def transition(model: Model, state: State) -> Model:
 
 
 def subscriptions(_: Model) -> List[Sub[Any, Msg]]:
-    return [sub.odometry(Odom)]
+    """
+    Subscriptions from which to receive messages.
+    """
+    return [
+        sub.odometry(Odom),
+        sub.directions(Directions),
+    ]
 
 
 ### Run ###
 
 
 def run() -> None:
+    """
+    Run the navigation module.
+    """
     rospy.init_node("laser_navigate")
 
     # Run the ROS controller
