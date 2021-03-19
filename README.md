@@ -17,7 +17,7 @@ formulated as LASER: the Light A* Search Evasion Routine. The A* Search takes an
 
 ## How to Run LASER 
 
-(change if needed) We have intialized [] as the starting cell and [] as the goal cell. The goal of this robot is to approach the light from behind (this can be done by placing a wall behind the light, or placing the light somewhere so that the robot can turn aroun
+(change if needed) We have intialized [] as the starting cell and [] as the goal cell. The goal cell is set equal to the maze cell of the player's odom pose 
 
 These can be changed in (code location). 
 
@@ -271,11 +271,15 @@ up short of the end. However, there could be three times the twists in the road
 ahead. Really consider if you want to continue on that path, and be aware of
 everything left unattended if you do choose to continue.
 
+### Player Input 
+
+After testing with stationary ligtattach a light to a robot which can be teleoperated by a human player. As the player moves,
+
 ## Future Work
 
-The next step is to turn this project into a playable game! 
+The next step is to complete the rest of the gamification aspects. 
  
-- Attach a light to a robot which can be teleoperated by a human player. As the player moves, 
+ 
 - Create a first-person game view using the camera feed of the teleop robot.
   Augment this view using visual filters and sound effects.
 - Adding more autonomous "monster" robots 
