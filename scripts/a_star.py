@@ -7,6 +7,10 @@ from nav_msgs.msg import OccupancyGrid, Odometry
 from std_msgs.msg import Header, String
 import math
 import numpy as np
+from typing import List
+
+
+import robotics_final_project.msg as msg
 
 
 class Cell:
@@ -26,53 +30,77 @@ class Cell:
 
 class AStar:
     def __init__(self):
+        print("Initiaizing...")
 
         # set starting position cell and goal cell
-        self.starting_position = Cell(10, 10, -1, -1, -1, -1, 0, 0, -1)
+        self.starting_position = Cell(0, 0, -1, -1, -1, -1, -1, -1, -1)
         self.goal = Cell(
-            4, 2, -1, -1, -1, -1, -1, -1, -1
+            0, 0, -1, -1, -1, -1, -1, -1, -1
         )  # the player robot. If successor = goal stop search
 
         # map setup
         self.col_num = 13
         self.row_num = 13
         self.map_topic = "map"
+        self.direction_topic = "directions"
         self.map = OccupancyGrid()
 
-        print("Initiaizing...")
+        # Flags for state handling to ensure values are properly initialized
         self.map_flag = False
         self.nodes_flag = False
-
-        # subscribe to the map server
-        rospy.Subscriber(self.map_topic, OccupancyGrid, self.get_map)
-
-        while not self.map_flag:
-            pass
 
         # lists for A* search algorithm
         self.open_list = []
         self.closed_list = []
 
-        self.init_map_nodes()
-
-        while not self.nodes_flag:
-            pass
-
         # subscribe to odom pose
         self.odom_sub = rospy.Subscriber("odom", Odometry, self.update_odometry)
+        # subscribe to the map server
+        rospy.Subscriber(self.map_topic, OccupancyGrid, self.get_map)
+        # publisher for directions
+        self.direction_pub = rospy.Publisher(
+            self.direction_topic, msg.Path, queue_size=10
+        )
+        # subcriber for path input
+        rospy.Subscriber("/path_input", msg.PathQuery, self.perform_a_star)
 
-        # find the shortest path from starting cell to goal cell
+    # Callback function For Direction Publisher that reinitializes nodes and Calls Path Finding
+    def perform_a_star(self, msg):
+        print("received path query")
+        # Grabs data from msg and sets them
+        self.starting_position = cell_from_msg(msg.start)
+        self.goal = cell_from_msg(msg.end)
+        self.blocked_by_light = [cell_from_msg(c) for c in msg.blocked]
+        # Reset data fields for fresh calculation
+        self.open_list = []
+        self.closed_list = []
+        self.cell_details = []
+        # This ensures the map data is read before anything can happen
+        while not self.map_flag:
+            pass
+        self.nodes_flag = False
+        # Inits cell data
+        self.init_map_nodes()
+        while not self.nodes_flag:
+            pass
+        # Main algo for path finding
         self.find_path()
 
+    # Checks if specified cell has a light blocking it
+    def check_for_light(self, i, j):
+        for c in self.blocked_by_light:
+            if c.i == i and c.j == j:
+                return True
+        return False
+
+    # find the shortest path from starting cell to goal cell, by iterating through cells and their neighbors
     def find_path(self):
 
-        print("START")
-        print(self.starting_position.i)
-        print(self.starting_position.j)
-        print("GOAL")
-        print(self.goal.i)
-        print(self.goal.j)
+        print(f"START: {self.starting_position.i}, {self.starting_position.j}")
+        print(f"GOAL: {self.goal.i}, {self.goal.j}")
+
         dest_found = False
+        # Sets starting position as initial node for iterating
         self.open_list.append(
             self.cell_details[
                 self.find_index(self.starting_position.i, self.starting_position.j)
@@ -96,48 +124,56 @@ class AStar:
             # if valid, find the values for the successor
 
             if self.check_north(q):
-                successors[0] = Cell(-1, -1, -1, -1, -1, -1, -1, -1, -1)
-                successors[0].i = q.i - 1
-                successors[0].j = q.j
-                successors[0].parent_i = q.i
-                successors[0].parent_j = q.j
-                successors[0].h = self.manhattan_distance(successors[0], self.goal)
+                temp_cell = Cell(-1, -1, -1, -1, -1, -1, -1, -1, -1)
+                temp_cell.i = q.i - 1
+                temp_cell.j = q.j
+                temp_cell.parent_i = q.i
+                temp_cell.parent_j = q.j
+                temp_cell.h = self.manhattan_distance(temp_cell, self.goal)
                 index = self.find_index(q.i, q.j)
-                successors[0].g = self.cell_details[index].g + 1
-                successors[0].f = successors[0].g + successors[0].h
+                temp_cell.g = self.cell_details[index].g + 1
+                temp_cell.f = temp_cell.g + temp_cell.h
+                if not self.check_for_light(temp_cell.i, temp_cell.j):
+                    successors[0] = temp_cell
 
             if self.check_east(q):
-                successors[1] = Cell(-1, -1, -1, -1, -1, -1, -1, -1, -1)
-                successors[1].i = q.i
-                successors[1].j = q.j + 1
-                successors[1].parent_i = q.i
-                successors[1].parent_j = q.j
-                successors[1].h = self.manhattan_distance(successors[1], self.goal)
+                temp_cell = Cell(-1, -1, -1, -1, -1, -1, -1, -1, -1)
+                temp_cell.i = q.i
+                temp_cell.j = q.j + 1
+                temp_cell.parent_i = q.i
+                temp_cell.parent_j = q.j
+                temp_cell.h = self.manhattan_distance(temp_cell, self.goal)
                 index = self.find_index(q.i, q.j)
-                successors[1].g = self.cell_details[index].g + 1
-                successors[1].f = successors[1].g + successors[1].h
+                temp_cell.g = self.cell_details[index].g + 1
+                temp_cell.f = temp_cell.g + temp_cell.h
+                if not self.check_for_light(temp_cell.i, temp_cell.j):
+                    successors[1] = temp_cell
 
             if self.check_south(q):
-                successors[2] = Cell(-1, -1, -1, -1, -1, -1, -1, -1, -1)
-                successors[2].i = q.i + 1
-                successors[2].j = q.j
-                successors[2].parent_i = q.i
-                successors[2].parent_j = q.j
-                successors[2].h = self.manhattan_distance(successors[2], self.goal)
+                temp_cell = Cell(-1, -1, -1, -1, -1, -1, -1, -1, -1)
+                temp_cell.i = q.i + 1
+                temp_cell.j = q.j
+                temp_cell.parent_i = q.i
+                temp_cell.parent_j = q.j
+                temp_cell.h = self.manhattan_distance(temp_cell, self.goal)
                 index = self.find_index(q.i, q.j)
-                successors[2].g = self.cell_details[index].g + 1
-                successors[2].f = successors[2].g + successors[2].h
+                temp_cell.g = self.cell_details[index].g + 1
+                temp_cell.f = temp_cell.g + temp_cell.h
+                if not self.check_for_light(temp_cell.i, temp_cell.j):
+                    successors[2] = temp_cell
 
             if self.check_west(q):
-                successors[3] = Cell(-1, -1, -1, -1, -1, -1, -1, -1, -1)
-                successors[3].i = q.i
-                successors[3].j = q.j - 1
-                successors[3].parent_i = q.i
-                successors[3].parent_j = q.j
-                successors[3].h = self.manhattan_distance(successors[3], self.goal)
+                temp_cell = Cell(-1, -1, -1, -1, -1, -1, -1, -1, -1)
+                temp_cell.i = q.i
+                temp_cell.j = q.j - 1
+                temp_cell.parent_i = q.i
+                temp_cell.parent_j = q.j
+                temp_cell.h = self.manhattan_distance(temp_cell, self.goal)
                 index = self.find_index(q.i, q.j)
-                successors[3].g = self.cell_details[index].g + 1
-                successors[3].f = successors[3].g + successors[3].h
+                temp_cell.g = self.cell_details[index].g + 1
+                temp_cell.f = temp_cell.g + temp_cell.h
+                if not self.check_for_light(temp_cell.i, temp_cell.j):
+                    successors[3] = temp_cell
 
             # now, check each successor
             for s in successors:
@@ -180,7 +216,7 @@ class AStar:
 
         # trace the path by starting at the goal cell
         # and tracing back the parent nodes until you reach the starting cell
-        self.trace_path()
+        self.trace_path(dest_found)
 
     # check if a cell is in closed list
     def in_closed_list(self, cell):
@@ -200,7 +236,7 @@ class AStar:
         occdex = self.xrange * y + x
         return int(occdex)
 
-    # check which directions you can move in
+    # check which directions you can move in and if there isa wall detectied in this direction
     def check_west(self, parent):
 
         location = self.node_to_occ(parent.i, parent.j)
@@ -238,9 +274,11 @@ class AStar:
                 return False  # false, you cannot move north
         return True
 
+    # gets heuristic estimated distance from cell to goal
     def manhattan_distance(self, current_cell, goal):
         return abs(current_cell.i - goal.i) + abs(current_cell.j - goal.j)
 
+    # initialize cell data and resets their values
     def init_map_nodes(self):
         self.cell_details = []
         xrange = (self.map.info.width - 60) / 13
@@ -271,33 +309,39 @@ class AStar:
         print("FINISHED INIT NODES")
 
     # trace the path once the destination has been found
-    def trace_path(self):
+    def trace_path(self, dest_found):
+
         print("The path is ")
         self.path = []
-        row = self.goal.i
-        col = self.goal.j
+        if dest_found:
+            row = self.goal.i
+            col = self.goal.j
 
-        path = []
+            path = []
 
-        while not (
-            (row == self.starting_position.i) and (col == self.starting_position.j)
-        ):
-            index = self.find_index(row, col)
-            cell = self.cell_details[index]
-            path.append(cell)
-            row = cell.parent_i
-            col = cell.parent_j
+            while not (
+                (row == self.starting_position.i) and (col == self.starting_position.j)
+            ):
+                index = self.find_index(row, col)
+                cell = self.cell_details[index]
+                path.append(cell)
+                row = cell.parent_i
+                col = cell.parent_j
 
-        start_index = self.find_index(row, col)
-        start_cell = self.cell_details[start_index]
-        path.append(start_cell)
+            start_index = self.find_index(row, col)
+            start_cell = self.cell_details[start_index]
+            path.append(start_cell)
 
-        path = path[::-1]
-        for c in path:
-            print(str(c.i) + ", " + str(c.j))
+            path = path[::-1]
+            for c in path:
+                print(str(c.i) + ", " + str(c.j))
 
-        self.path = path
+            self.path = path
+        # Publish Path
+        path_msg = msg_from_path(self.path)
+        self.direction_pub.publish(path_msg)
 
+    # Subscriber callback to get map data
     def get_map(self, data):
         self.map = data
         self.xrange = self.map.info.width
@@ -320,6 +364,19 @@ class AStar:
 
     def run(self):
         rospy.spin()
+
+
+# Helpers for handling msgs and msg format
+def msg_from_path(path: List[Cell]) -> msg.Path:
+    return msg.Path(path=[msg_from_cell(c) for c in path])
+
+
+def msg_from_cell(cell: Cell) -> msg.Cell:
+    return msg.Cell(row=cell.i, col=cell.j)
+
+
+def cell_from_msg(msg: msg.Cell) -> Cell:
+    return Cell(msg.row, msg.col, -1, -1, -1, -1, -1, -1, -1)
 
 
 if __name__ == "__main__":
