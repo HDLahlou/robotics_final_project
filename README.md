@@ -8,16 +8,11 @@
 Coming from similar backgrounds in game design, our team hopes to produce a game
 using our knowledge of robotics algorithms. Our current idea is most similar to
 a survival game: the player operates one TurtleBot in a dark maze while another
-"monster" bot tries to approach the player. A creature of the dark, this monster
+"monster" bot tries to approach the player. The monster knows the maze and the player's position at any time. A creature of the dark, this monster
 cannot stay in the glow of the player's flashlight; thus, the monster bot has to
 be smart in planning its path to the player. We aim to implement such path-finding
 using the A* search algorithm coupled with sensory controls, a combination we've
 formulated as LASER: the Light A* Search Evasion Routine.
-
-For my one week [graduating student] project milestones, I've tried to lay the
-groundwork for environment creation and sensory robot controls, which are
-described in the following section.
-
 
 ## How to Run LASER 
 
@@ -161,6 +156,8 @@ Code locations and descriptions
 
 TODO combining this with motion code 
 
+(Note: we describe the grid square as "cells" in this document but they may be referred to as "nodes" in code comments; these terms can be used interchangeably.)
+
 Code location and descriptions
 - [`scripts/a_star.py`](scripts/a_star.py)
   - Initialize every grid square of the map as a `Cell()`, which has the following attributes. 
@@ -195,19 +192,26 @@ Code location and descriptions
   
     - `starting_position` cell is appended to `open_list` 
     
-    - find node `q` with the smallest f of the open list  
+    - While the `open_list` is not empty, set `q`  equal cell with the smallest value of of the open list
+
+      - Initilize an array of 4 `successors` with the value -1; these are in the order of north, east, south, and west. 
+
+      - `check_north` checks if the robot can go north from `q`. If the robot can move in that direction, set the north successor equal to the `Cell` and set `q` as the parent 
+
+      - Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west. 
+
+      - For every valid successor:
+          
+          - If the successor is equal to `goal`, stop the search 
+          - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`. 
+
     
   - `trace_path` the final path found by the A* search algorithm and publishes it to TODO
 
 For example, the cell at [2][2] in the image below has a `successor` to its north and its east, as indicated by the blue arrows. 
 The array indices of the cells are in row-major order:
 
-
-
 <img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
-
-
-
 
 ## Challenges
 
@@ -267,32 +271,12 @@ everything left unattended if you do choose to continue.
 
 ## Future Work
 
-This document represents a snapshot of our project one week before the final
-product. A brief overview of remaining tasks is as follows.
-
-#### Light Emission, Detection, and Reaction
-- Add operations for inferring the placement of a light given the lighting of
-  the robot's surroundings (i.e. infer light placement without seeing the light
-  itself).
-- Combine A* path-finding on a static map with dynamic measurements about
-  lights within that map.
-
-#### Path-finding and Navigation
-- Create a map image file (like we used in the particle filter project) for our
-  Gazebo environment.
-- Implement A* search and use the above map as input for computing paths.
-- Communicate paths to the sensory control system using serialized directions
-  that tell the robot which way to move at each junction.
-
-#### Working in Gazebo
-- Following the discussion about shadow simulation, perhaps try to work around
-  the client/server issue with more Gazebo plugin wizardry (or heed our own takeaway
-  and don't spend much more time on this).
-
-#### Stretch Goals
-- Attach the light to a robot which can be teleoperated by a human player.
+The next step is to turn this project into a playable game! 
+ 
+- Attach a light to a robot which can be teleoperated by a human player. As the player moves, 
 - Create a first-person game view using the camera feed of the teleop robot.
   Augment this view using visual filters and sound effects.
+- Adding more autonomous "monster" robots 
 - Write a short script for more familiar teleop controls (the TurtleBot3 teleop
   package uses a control scheme that varies from typical game controls in a few
   ways). Possibly ask team Controller Teleop about using their controller
