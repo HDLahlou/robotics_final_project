@@ -54,7 +54,7 @@
 
     <include>
       <uri>model://hunter</uri>
-      <pose>-2.5 1.2 0 0 0 3.154</pose>
+      <pose>-2.5 1.2 0 0 0 3.1415</pose>
     </include>
 
     <gui fullscreen="0">
