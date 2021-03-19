@@ -10,13 +10,15 @@ using our knowledge of robotics algorithms. Our current idea is most similar to
 a survival game: the player operates one TurtleBot in a dark maze while another
 "monster" bot tries to approach the player. The monster knows the maze and the player's position at any time. A creature of the dark, this monster
 cannot stay in the glow of the player's flashlight; thus, the monster bot has to
-be smart in planning its path to the player. We aim to implement such path-finding
-using the A* search algorithm coupled with sensory controls, a combination we've
-formulated as LASER: the Light A* Search Evasion Routine.
+be smart in planning its path to the player.
+
+The main components of our project are A* Search and Sensory Controls, a combination we've
+formulated as LASER: the Light A* Search Evasion Routine. The A* Search takes any starting position and goal position in the maze and finds the best path. The robot uses its Sensory Controls to traverse the maze, center itself in the maze hallways, avoid wall collisions, make smooth turns, and detect light. When a cell is designated as blocked by light, the A* Search takes this into account and recalculates the new best past.   
 
 ## How to Run LASER 
 
-(change if needed) We have intialized [] as the starting cell and [] as the goal cell. The goal of this robot is to approach the light from behind 
+(change if needed) We have intialized [] as the starting cell and [] as the goal cell. The goal of this robot is to approach the light from behind (this can be done by placing a wall behind the light, or placing the light somewhere so that the robot can turn aroun
+
 These can be changed in (code location). 
 
 Terminal commands
@@ -281,3 +283,7 @@ The next step is to turn this project into a playable game!
   package uses a control scheme that varies from typical game controls in a few
   ways). Possibly ask team Controller Teleop about using their controller
   alongside our project.
+  
+  ## Demo
+  
+  <img src="demo(s) go here" alt="occupancy grid" width="800"/>
