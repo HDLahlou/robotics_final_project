@@ -5,7 +5,7 @@
 from dataclasses import dataclass, replace
 from functools import partial
 import math
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import rospy
 import rospy_util.mathf as mathf
@@ -98,7 +98,7 @@ class Model:
     cv_bridge: CvBridge
     state: State
     path: List[Cell]
-    heading: Vector2
+    last_cell: Optional[Cell]
 
 
 CELL_DEST: Cell = Cell(8, 6)
@@ -107,7 +107,7 @@ init_model: Model = Model(
     cv_bridge=CvBridge(),
     state=Request(CELL_DEST, []),
     path=[],
-    heading=v2.zero,
+    last_cell=None,
 )
 
 init: Tuple[Model, List[Cmd[Any]]] = (init_model, cmd.none)
@@ -153,8 +153,9 @@ Msg = Union[
 ### Update ###
 
 DRIVE_VEL_LIN_MAX: float = 0.6
-DRIVE_VEL_LIN_MIN: float = 0.6
+DRIVE_VEL_LIN_MIN: float = 0.4
 DRIVE_VEL_ANG_MAX: float = 1.5 * math.pi
+DRIVE_REORIENT_ERR: float = 0.5
 
 TURN_VEL_LIN: float = 0.5
 TURN_VEL_ANG: float = 1.8 * math.pi
@@ -219,7 +220,11 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
     crossing_cells = current_cell == next_cell
 
-    if crossing_cells:
+    # TODO - can precompute headings
+    # TODO - do this in drive/turn state; no reassignment
+    if crossing_cells and model.last_cell is not None:
+        heading_old = grid.direction_between_cells(model.last_cell, current_cell)
+
         # this is illegal
         model = replace(model, path=model.path[1:])
 
@@ -229,8 +234,13 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
         print(f"next cell is {next_cell}")
 
-    if not grid.cells_are_adjacent(current_cell, next_cell):
-        return wait(model, reason="Next cell not adjacent")
+        heading_new = grid.direction_between_cells(current_cell, next_cell)
+
+        if not v2.equals(heading_old, heading_new):
+            return (transition(model, state=Turn()), cmd.none)
+    else:
+        # TODO - not this
+        model = replace(model, last_cell=current_cell)
 
     to_cell = grid.next_cell_direction(
         cell_current=current_cell,
@@ -242,15 +252,16 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
     if isinstance(model.state, Orient):
         if approx_zero(err_ang):
-            return (transition(model, state=Drive()), [cmd.stop])
+            new_model = replace(model)
+            return (transition(new_model, state=Drive()), [cmd.stop])
 
         vel_ang = lerp_signed(0.05 * math.pi, 1.0 * math.pi, err_ang)
 
         return (model, [cmd.turn(vel_ang)])
 
     if isinstance(model.state, Drive):
-        if abs(err_ang) > 0.25:
-            return (transition(model, state=Turn()), cmd.none)
+        if abs(err_ang) > DRIVE_REORIENT_ERR:
+            return (transition(model, state=Orient()), [cmd.stop])
 
         cell_offset = grid.current_cell_offset(
             grid=GRID,
