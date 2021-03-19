@@ -251,7 +251,12 @@ demonstrated, along with movement controls, in the second recording: TurtleBot
 navigates the maze, quickly turning and retreating upon encountering two glowing
 spheres. For demonstration purposes, a cube has been placed to obstruct one of
 the pathways such that TurtleBot can only move back and forth between the two
-spheres which it indefinitely avoids.
+spheres which it indefinitely avoids. In addition, we stop the autonomous
+robot's movement ("Destination blocked") when it encounters a light in the cell
+it is about to enter. This is because of the way we handle our pathfinding;
+the A* algorithm blocks off a certain cell to prevent the robot from going through
+it, but blocking off the same cell as the destination will lead to the robot being
+unable to find a valid path.
 
 Code locations and descriptions
 - [`scripts/perception/light.py`](scripts/perception/light.py)
