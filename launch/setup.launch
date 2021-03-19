@@ -12,26 +12,26 @@
     <arg name="debug" value="false"/>
   </include>
 
-  <param name="robot_description"
-    command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro"/>
-
-  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
-    args="-x -2.5 -y 1.2 -z 0.0 -Y 3.145 -urdf -param robot_description -model $(arg model)"
-    respawn="false" output="screen"/>
-
   <node name="map_server_laser" pkg="map_server" type="map_server"
     args="$(find robotics_final_project)/map/maze-2/maze-1000.yaml"/>
 
-  <node name="link1_broadcaster" pkg="tf" type="static_transform_publisher"
-    args="0 0 0 0 0 0 /map /odom 100" />
+  <group ns="player">
+    <include file="$(find robotics_final_project)/launch/configure_turtlebot.launch">
+      <arg name="model" value="$(arg model)"/>
+      <arg name="name" value="player"/>
+    </include>
+  </group>
 
-  <include file="$(find turtlebot3_bringup)/launch/turtlebot3_remote.launch">
-    <arg name="model" value="$(arg model)"/>
-  </include>
+  <group ns="hunter">
+    <include file="$(find robotics_final_project)/launch/configure_turtlebot.launch">
+      <arg name="model" value="$(arg model)"/>
+      <arg name="name" value="hunter"/>
+    </include>
+  </group>
 
-  <group if="$(arg rviz)">
+  <!-- <group if="$(arg rviz)">
     <node name="rviz_laser" pkg="rviz" type="rviz" required="true"
       args="-d $(find robotics_final_project)/rviz/laser.rviz"/>
-  </group>
+  </group> -->
 
 </launch>

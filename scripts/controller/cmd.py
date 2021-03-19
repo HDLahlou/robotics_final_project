@@ -38,7 +38,7 @@ def velocity(linear: float, angular: float) -> Cmd[Twist]:
     Instruct the robot to move with the given velocities.
     """
     return Cmd(
-        topic_name="/cmd_vel",
+        topic_name="/hunter/cmd_vel",
         message_type=Twist,
         message_value=twist_from_velocities(linear, angular),
     )
