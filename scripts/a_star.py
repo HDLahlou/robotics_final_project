@@ -25,11 +25,13 @@ class Cell:
 class AStar:
 
     def __init__(self):
-        #self.robot_estimate = Pose()
 
         # MAP AND NODES __________
 
-        self.starting_position = Cell(1, 1, -1, -1, -1, -1, 0, 0, -1)
+        self.starting_position = Cell(0, 0, -1, -1, -1, -1, 0, 0, -1)
+        self.goal = Cell(12, 12, -1, -1, -1, -1, -1, -1, -1) # the player robot. If successor = goal stop search 
+
+        
 
         self.col_num = 13
         self.row_num = 13
@@ -58,30 +60,15 @@ class AStar:
         while (not self.nodes_flag):
             pass
 
-
-        # dex = self.find_index(1,1)
-        # print(dex)
-        # self.starting_position = self.cell_details[dex]
-
-
-    
-
-        self.goal = Cell(1, 2, -1, -1, -1, -1, -1, -1, -1) # the player robot. If successor = goal stop search 
-
-        # #init the values for goal 
-        # self.goal.i = 0 
-        # self.goal.j = 0 
-
         # ODOMETRY __________
 
         # subscribe to odom pose 
         
         self.odom_sub = rospy.Subscriber("odom", Odometry, self.update_odometry)
-        print(self.starting_position.i)
-        print(self.starting_position.j)
+        
 
         # #checking for 
-        # i = 12
+        # i = 1
         # for j in range (13):
 
         #     dex = self.find_index(i,j)
@@ -100,6 +87,14 @@ class AStar:
         self.find_path() 
 
     def find_path(self):
+
+
+        print("START")
+        print(self.starting_position.i)
+        print(self.starting_position.j)
+        print("GOAL")
+        print(self.goal.i)
+        print(self.goal.j)
         dest_found = False
         self.open_list.append(self.cell_details[self.find_index(self.starting_position.i, self.starting_position.j)])
         
@@ -137,7 +132,7 @@ class AStar:
                 successors[0].parent_i = q.i
                 successors[0].parent_j = q.j 
                 successors[0].h = self.manhattan_distance(successors[0], self.goal)
-                index = self.find_index(successors[0].i, successors[0].j)
+                index = self.find_index(q.i, q.j)
                 successors[0].g = self.cell_details[index].g + 1
                 successors[0].f = successors[0].g + successors[0].h
 
@@ -148,7 +143,7 @@ class AStar:
                 successors[1].parent_i = q.i
                 successors[1].parent_j = q.j 
                 successors[1].h = self.manhattan_distance(successors[1], self.goal)
-                index = self.find_index(successors[1].i, successors[1].j)
+                index = self.find_index(q.i, q.j)
                 successors[1].g = self.cell_details[index].g + 1
                 successors[1].f = successors[1].g + successors[1].h
 
@@ -159,7 +154,7 @@ class AStar:
                 successors[2].parent_i = q.i
                 successors[2].parent_j = q.j 
                 successors[2].h = self.manhattan_distance(successors[2], self.goal)
-                index = self.find_index(successors[2].i, successors[2].j)
+                index = self.find_index(q.i, q.j)
                 successors[2].g = self.cell_details[index].g + 1
                 successors[2].f = successors[2].g + successors[2].h
                            
@@ -170,7 +165,7 @@ class AStar:
                 successors[3].parent_i = q.i
                 successors[3].parent_j = q.j 
                 successors[3].h = self.manhattan_distance(successors[3], self.goal)
-                index = self.find_index(successors[3].i, successors[3].j)
+                index = self.find_index(q.i, q.j)
                 successors[3].g = self.cell_details[index].g + 1
                 successors[3].f = successors[3].g + successors[3].h
             
@@ -394,10 +389,8 @@ class AStar:
         self.map = data
         self.xrange = self.map.info.width
         self.yrange = self.map.info.height
-        self.gridsize = 70#int((self.xrange - 60)/13)
-        #print(self.gridsize) 
-        
-
+        self.gridsize = 70 #int((self.xrange - 60)/13)
+ 
         h = self.map.info.height
         w = self.map.info.width
 
@@ -410,10 +403,7 @@ class AStar:
 
         print("get map")
         self.map_flag = True
-        # print(self.xrange)
-        #print(self.yrange)
-        #print(data)
-
+  
     def update_odometry(self, data):
         self.odom_pose = data.pose.pose
 
