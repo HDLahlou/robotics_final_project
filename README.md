@@ -12,15 +12,15 @@ a survival game: the player operates one TurtleBot in a dark maze while another
 cannot stay in the glow of the player's flashlight; thus, the monster bot has to
 be smart in planning its path to the player.
 
-The main components of our project are A* Search and Sensory Controls, a combination we've formulated as LASER: the Light A* Search Evasion Routine. The A* Search takes any starting position and goal position in the maze and finds the best path. The robot uses its Sensory Controls to traverse the maze, center itself in the maze hallways, avoid wall collisions, make smooth turns, and detect light. When a cell is designated as blocked by light, the A* Search takes this into account and recalculates the new best past.   
+The main components of our project are A* Search, Sensory Controls, and Movement Controls, a combination we've formulated as LASER: the Light A* Search Evasion Routine. The A* Search finds the best path from the monster to the player. The robot uses its Sensory Controls to traverse the maze, center itself in the maze hallways, avoid wall collisions, make smooth turns, and detect light. If the monster runs into the player's light, the A* Search takes this into account and recalculates the new best path to sneak up behind the player.
 
 ## How to Run LASER 
 
 `TODO terminal commands and description`
 
-You can teleop the player robot and observ the monster robot's behavior. 
+You can teleop the player robot and observe the monster robot's behavior. 
 
-TODO Any necessary package installations? 
+TODO Any necessary package installations?
 
 ## System Architecture
 
@@ -28,13 +28,13 @@ TODO Any necessary package installations?
 
 A* search is implemented in [`scripts/a_star.py`](scripts/a_star.py).
 
-(Note: we describe the grid squares as "cells" in this document, but they may be referred to as "nodes" in code comments; these terms can be used interchangeably.)
+(Note: we describe the grid squares as "cells" in this document, but they may be referred to as "nodes" in the code; these terms can be used interchangeably.)
 
-#### Cells 
+#### Initialization  
 
 <img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
 
-We initialize every grid square of the map as a `Cell()`, which has the following attributes. 
+We initialize every grid square of the map as a `Cell()`, which has the following attributes. This information is stored in `cell_details` and is updated as the A* search is performed.
 
 - `i`: row index
 
@@ -50,34 +50,21 @@ We initialize every grid square of the map as a `Cell()`, which has the followin
 
 - `h`: estimated distance from this cell to the goal cell
   
- This information is stored in `cell_details` and is updates as the A* search is performed.
-
-
  #### Finding the best path 
   
-The `starting_position` cell 11111and the `goal` cell
-  
-  - Initialize the map data
-  
-  - Initialize `open_list` and `closed_list` as empty arrays 
-  
-  - `find_path` perform the A* search 
-  
-    - `starting_position` cell is appended to `open_list` 
+The function `find_path` finds the shortest path from `starting_position` (monster's robot current cell) and `goal` (player's current cell). `open_list` and `closed_list` are intialized as empty arrays; then, `starting_position` is appended to `open_list` 
     
-    - While the `open_list` is not empty, set `q`  equal cell with the smallest value of of the open list
+ While the `open_list` is not empty, set `q` equal to cell with the smallest value of `f` in the `open_list`
 
-      - Initilize an array of 4 `successors` with the value -1; these are in the order of north, east, south, and west
+- `q` has an array four `successors` in the order of north, east, south, and west. Each successor is intialized as `-1`. 
 
-      - `check_north` checks if the robot can go north from `q`. If the robot can move in that direction, set the north successor equal to the `Cell` and set `q` as the parent 
+- `check_north` checks if the robot can go north from `q`. If the robot can move in that direction, set the north succesor of `q` equal to the `Cell` north of of `q`. `q` as the parent Otherwise, the successor remains equal to `-1`. Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west
 
-      - Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west
-
-      - For every valid successor:
+- For every valid successor:
           
-          - If the successor is equal to `goal`, stop the search 
+ - If the successor is equal to `goal`, stop the search 
     
-          - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`.  
+ - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`.  
           
           - Push 'q' to the closed list 
     
