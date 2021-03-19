@@ -35,12 +35,12 @@ def directions(to_msg: Callable[[List[Cell]], Msg]) -> Sub[Path, Msg]:
     )
 
 
-def odometry(to_msg: Callable[[TurtlePose], Msg]) -> Sub[Odometry, Msg]:
+def odometry(bot: str, to_msg: Callable[[TurtlePose], Msg]) -> Sub[Odometry, Msg]:
     """
     Receive odometry sensor data.
     """
     return Sub(
-        topic_name="/hunter/odom",
+        topic_name=f"/{bot}/odom",
         message_type=Odometry,
         to_msg=lambda odom: to_msg(tp.from_pose(odom.pose.pose)),
     )
