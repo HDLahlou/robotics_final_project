@@ -10,7 +10,6 @@ from dataclasses import dataclass, replace
 from enum import IntEnum
 from functools import partial
 import math
-import random
 from typing import Any, Callable, List, Optional, Tuple, Union
 
 import rospy
@@ -20,7 +19,7 @@ from sensor_msgs.msg import LaserScan
 
 from controller import Cmd, Controller, Sub, cmd, sub
 from perception import CvBridge, ImageBGR, ImageROS, image, light
-from util import approx_zero, compose, lerp_signed
+from util import approx_zero, compose, head, lerp_signed
 
 
 @dataclass
@@ -52,6 +51,8 @@ class Stop:
     Stop moving.
     """
 
+    reason: str
+
 
 @dataclass
 class Drive:
@@ -67,6 +68,12 @@ class Turn:
     """
 
     dir: Direction
+    angle: float
+
+
+@dataclass
+class Cross:
+    pass
 
 
 @dataclass
@@ -83,6 +90,7 @@ class Spin:
 State = Union[
     Stop,
     Turn,
+    Cross,
     Drive,
     Spin,
 ]
@@ -101,12 +109,21 @@ class Model:
     """
 
     cv_bridge: CvBridge
+    directions: List[Direction]
     state: State
     pose: Optional[TurtlePose]
 
 
 init_model: Model = Model(
     cv_bridge=CvBridge(),
+    directions=[
+        Direction.RIGHT,
+        Direction.LEFT,
+        Direction.RIGHT,
+        Direction.RIGHT,
+        Direction.LEFT,
+        Direction.RIGHT,
+    ],
     state=Drive(),
     pose=None,
 )
@@ -162,7 +179,7 @@ DRIVE_VEL_ANG_MAX: float = 3.0
 
 # Driving conditions
 
-DRIVE_WALL_AHEAD_DIST: float = 0.5
+DRIVE_WALL_AHEAD_DIST: float = 1.2
 
 # Turning movement
 
@@ -200,8 +217,13 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     Given an inbound message and the current robot model, produce a new model
     and a list of commands to execute.
     """
+    if isinstance(model.state, Stop):
+        return (model, [cmd.stop])
 
-    if isinstance(msg, Scan):
+    if (direction := head(model.directions)) is None:
+        return (replace(model, state=Stop("out of directions")), cmd.none)
+
+    if isinstance(msg, Scan) and model.pose is not None:
         # Received a message from robot LiDAR.
 
         if isinstance(model.state, Drive):
@@ -217,46 +239,35 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
                 *([Direction.FORWARD] if forward.dist > DRIVE_WALL_AHEAD_DIST else []),
             ]
 
-            if not choices:
-                # No movement choices; stop moving.
+            # if not choices:
+            #     return (transition(model, state=Stop("dead end")), cmd.none)
 
-                return (replace(model, state=Stop()), [cmd.stop])
+            if not choices or choices == [Direction.FORWARD]:
+                return drive_forward(msg.ranges, model)
 
-            # Choose a random direction from the movement choices.
-
-            direction = random.choice(choices)
+            if direction not in choices:
+                return (
+                    transition(model, state=Stop("impossible direaction")),
+                    cmd.none,
+                )
 
             if direction == Direction.FORWARD:
-                # Compute shortest ranges to adjacent maze walls.
-
-                left_min = shortest_range(
-                    msg.ranges[RANGE_LEFT - RANGE_OFFSET : RANGE_LEFT + RANGE_OFFSET]
-                )
-
-                right_min = shortest_range(
-                    msg.ranges[RANGE_RIGHT - RANGE_OFFSET : RANGE_RIGHT + RANGE_OFFSET]
-                )
-
-                # Computer angular and positional errors for current orientation.
-
-                err_ang_left = (left_min.dir - RANGE_LEFT) / RANGE_OFFSET
-                err_ang_right = (right_min.dir - RANGE_RIGHT) / RANGE_OFFSET
-
-                err_ang = 0.5 * (err_ang_left + err_ang_right)
-                err_lin = (left_min.dist - right_min.dist) / HALLWAY_WIDTH
-
-                # Compute aggergate error and corrective angular velocity.
-
-                err = 0.5 * (err_lin + err_ang)
-                vel_ang = lerp_signed(low=0, high=DRIVE_VEL_ANG_MAX, amount=err)
-
-                # Turn with corrective angular velocity while moving forward.
-
-                return (model, [cmd.velocity(angular=vel_ang, linear=DRIVE_VEL_LIN)])
+                return (transition(model, state=Cross()), cmd.none)
 
             # Turning left or right; transition to turn state.
 
-            return (replace(model, state=Turn(direction)), cmd.none)
+            return (transition(model, state=Turn(direction, model.pose.yaw)), cmd.none)
+
+        if isinstance(model.state, Cross):
+
+            ranges_left = msg.ranges[80:100]
+            ranges_right = msg.ranges[260:280]
+
+            if ranges_under(0.8, ranges_left) and ranges_under(0.8, ranges_right):
+                new_model = replace(model, directions=model.directions[1:])
+                return (transition(new_model, state=Drive()), cmd.none)
+
+            return drive_forward(msg.ranges, model)
 
         if isinstance(model.state, Turn):
             # Choose sign of velocity and portion of LiDAR ranges for specified
@@ -268,20 +279,26 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
                 else (-1.0, msg.ranges[280:300])
             )
 
-            range_front = msg.ranges[0]
+            angle_off = v2.signed_angle_between(
+                v2.from_angle(model.pose.yaw),
+                v2.from_angle(direction * (math.pi / 2.0) + model.state.angle),
+            )
 
-            if (
-                ranges_under(TURN_END_DIST, ranges_side)
-                and range_front.dist > TURN_WALL_AHEAD_DIST
+            err_ang = angle_off / math.pi
+
+            print(model.pose.yaw, angle_off, err_ang)
+
+            if ranges_under(TURN_END_DIST, ranges_side) and approx_zero(
+                err_ang, epsilon=0.1
             ):
                 # Wall is close to side of bot, no obstructions ahead; assume turn is over
                 # and transition to driving state.
-
-                return (replace(model, state=Drive()), cmd.none)
+                new_model = replace(model, directions=model.directions[1:])
+                return (transition(new_model, state=Drive()), cmd.none)
 
             # Perform turn with computed angular velocity.
 
-            vel_ang = direction * TURN_VEL_ANG
+            vel_ang = 4.0 * err_ang * TURN_VEL_ANG
 
             return (model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
 
@@ -301,7 +318,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
             # and begin spinning around to escape.
 
             dir_away = model.pose.yaw + math.pi
-            return (replace(model, state=Spin(dir_away)), [cmd.stop])
+            return (transition(model, state=Spin(dir_away)), [cmd.stop])
 
         return (model, cmd.none)
 
@@ -325,7 +342,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
                 # Angular error sufficiently low; consider spin complete and
                 # switch to driving state.
 
-                return (replace(new_model, state=Drive()), [cmd.stop])
+                return (transition(new_model, state=Drive()), [cmd.stop])
 
             # Compute angular velocity and perform spin.
 
@@ -338,6 +355,38 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     # None of the above cases match; no update.
 
     return (model, cmd.none)
+
+
+def transition(model: Model, state: State) -> Model:
+    print(f"Begin {state}")
+    return replace(model, state=state)
+
+
+def drive_forward(ranges: List[Range], model: Model) -> Tuple[Model, List[Cmd[Any]]]:
+    left_min = shortest_range(
+        ranges[RANGE_LEFT - RANGE_OFFSET : RANGE_LEFT + RANGE_OFFSET]
+    )
+
+    right_min = shortest_range(
+        ranges[RANGE_RIGHT - RANGE_OFFSET : RANGE_RIGHT + RANGE_OFFSET]
+    )
+
+    # Computer angular and positional errors for current orientation.
+
+    err_ang_left = (left_min.dir - RANGE_LEFT) / RANGE_OFFSET
+    err_ang_right = (right_min.dir - RANGE_RIGHT) / RANGE_OFFSET
+
+    err_ang = 0.5 * (err_ang_left + err_ang_right)
+    err_lin = (left_min.dist - right_min.dist) / HALLWAY_WIDTH
+
+    # Compute aggergate error and corrective angular velocity.
+
+    err = 0.5 * (err_lin + err_ang)
+    vel_ang = lerp_signed(low=0, high=DRIVE_VEL_ANG_MAX, amount=err)
+
+    # Turn with corrective angular velocity while moving forward.
+
+    return (model, [cmd.velocity(angular=vel_ang, linear=DRIVE_VEL_LIN)])
 
 
 def ranges_under(dist: float, ranges: List[Range]) -> bool:

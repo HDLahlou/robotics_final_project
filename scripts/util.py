@@ -22,6 +22,9 @@ V = TypeVar("V")
 
 
 def lerp_signed(low: float, high: float, amount: float) -> float:
+    """
+    Linearly interpolate between two numbers, preserving sign.
+    """
     return mathf.sign(amount) * mathf.lerp(low, high, abs(amount))
 
 
