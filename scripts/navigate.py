@@ -3,8 +3,9 @@
 # pyright: reportMissingTypeStubs=false
 
 from dataclasses import dataclass, replace
+from functools import partial
 import math
-from typing import Any, List, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import rospy
 import rospy_util.mathf as mathf
@@ -15,9 +16,16 @@ import rospy_util.vector2 as v2
 from controller import Cmd, Controller, Sub, cmd, sub
 from navigation.grid import Cell, Grid
 import navigation.grid as grid
-from util import approx_zero, head, lerp_signed
+from perception import CvBridge, ImageBGR, ImageROS, image, light
+from util import approx_zero, compose, head, lerp_signed
 
 ### Model ###
+
+
+@dataclass
+class Request:
+    dest: Cell
+    blocked: List[Cell]
 
 
 @dataclass
@@ -56,11 +64,22 @@ class Turn:
     pass
 
 
+@dataclass
+class Spin:
+    """
+    Spin to face the direction opposite of the next cell.
+    """
+
+    pass
+
+
 State = Union[
+    Request,
     Wait,
     Orient,
     Drive,
     Turn,
+    Spin,
 ]
 
 
@@ -72,15 +91,23 @@ class Model:
     @attribute `state`: Current state of the robot.
 
     @attribute `path`: Path to take to the destination.
+
+    @attribute `heading`: Direction the robot is facing upon entering a cell.
     """
 
+    cv_bridge: CvBridge
     state: State
     path: List[Cell]
+    last_cell: Optional[Cell]
 
+
+CELL_DEST: Cell = Cell(8, 6)
 
 init_model: Model = Model(
+    cv_bridge=CvBridge(),
+    state=Request(CELL_DEST, []),
     path=[],
-    state=Wait("Awaiting directions..."),
+    last_cell=None,
 )
 
 init: Tuple[Model, List[Cmd[Any]]] = (init_model, cmd.none)
@@ -107,29 +134,42 @@ class Directions:
     path: List[Cell]
 
 
+@dataclass
+class Image:
+    """
+    Image taken by the robot camera.
+    """
+
+    image: ImageBGR
+
+
 Msg = Union[
     Odom,
     Directions,
+    Image,
 ]
 
 
 ### Update ###
 
 DRIVE_VEL_LIN_MAX: float = 0.6
-DRIVE_VEL_LIN_MIN: float = 0.6
+DRIVE_VEL_LIN_MIN: float = 0.4
 DRIVE_VEL_ANG_MAX: float = 1.5 * math.pi
+DRIVE_REORIENT_ERR: float = 0.5
 
 TURN_VEL_LIN: float = 0.5
 TURN_VEL_ANG: float = 1.8 * math.pi
 
 GRID_SIDE_LEN: float = 14.754
 GRID_NUM_CELLS: int = 13
-GRID_ORIGIN: Vector2 = v2.scale(Vector2(GRID_SIDE_LEN, GRID_SIDE_LEN), -0.5)
+GRID_ORIGIN: Vector2 = Vector2(-0.5 * GRID_SIDE_LEN, -0.5 * GRID_SIDE_LEN)
 
 GRID: Grid = Grid(
     len_cell=GRID_SIDE_LEN / GRID_NUM_CELLS,
     origin=GRID_ORIGIN,
 )
+
+LIGHT_VAL_MIN: float = 200
 
 
 def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
@@ -137,29 +177,54 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     Given an inbound message and the current robot model, produce a new model
     and a list of commands to execute.
     """
-    if isinstance(msg, Directions):
-        if not model.path:
-            if not grid.path_is_valid(msg.path):
-                print("Path is invalid!")
-                return (model, cmd.none)
 
-            new_model = replace(model, path=msg.path)
-            return (transition(new_model, state=Orient()), cmd.none)
+    if isinstance(msg, Image):
+        if (next_cell := head(model.path)) is not None and (
+            isinstance(model.state, Drive) or isinstance(model.state, Turn)
+        ):
+            # Compute value of brightest area in image.
+            (val_max, _) = light.locate_brightest(msg.image)
 
-        print("Already have directions!")
+            if val_max >= LIGHT_VAL_MIN:
+                # Value is sufficiently high; consider the detected object a light
+                # and begin spinning to escape.
+                return (
+                    transition(model, state=Request(CELL_DEST, [next_cell])),
+                    [cmd.stop],
+                )
+
         return (model, cmd.none)
+
+    if isinstance(msg, Directions):
+        # TODO - standardize whether current cell is included
+        if not grid.path_is_valid(path := msg.path[1:]):
+            print("Path is invalid!")
+            return (model, cmd.none)
+
+        new_model = replace(model, path=path)
+        return (transition(new_model, state=Orient()), cmd.none)
 
     if isinstance(model.state, Wait):
         return (model, [cmd.stop])
 
+    current_cell = grid.locate_pose(GRID, msg.pose)
+
+    if isinstance(model.state, Request):
+        return (
+            transition(model, state=Wait("Requesting path...")),
+            [cmd.request_path(current_cell, model.state.dest, model.state.blocked)],
+        )
+
     if (next_cell := head(model.path)) is None:
         return wait(model, reason="Path is empty")
 
-    current_cell = grid.locate_pose(GRID, msg.pose)
-
     crossing_cells = current_cell == next_cell
 
-    if crossing_cells:
+    # TODO - can precompute headings
+    # TODO - do this in drive/turn state; no reassignment
+    if crossing_cells and model.last_cell is not None:
+        heading_old = grid.direction_between_cells(model.last_cell, current_cell)
+
         # this is illegal
         model = replace(model, path=model.path[1:])
 
@@ -169,8 +234,13 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
         print(f"next cell is {next_cell}")
 
-    if not grid.cells_are_adjacent(current_cell, next_cell):
-        return wait(model, reason="Next cell not adjacent")
+        heading_new = grid.direction_between_cells(current_cell, next_cell)
+
+        if not v2.equals(heading_old, heading_new):
+            return (transition(model, state=Turn()), cmd.none)
+    else:
+        # TODO - not this
+        model = replace(model, last_cell=current_cell)
 
     to_cell = grid.next_cell_direction(
         cell_current=current_cell,
@@ -182,15 +252,16 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
     if isinstance(model.state, Orient):
         if approx_zero(err_ang):
-            return (transition(model, state=Drive()), [cmd.stop])
+            new_model = replace(model)
+            return (transition(new_model, state=Drive()), [cmd.stop])
 
         vel_ang = lerp_signed(0.05 * math.pi, 1.0 * math.pi, err_ang)
 
         return (model, [cmd.turn(vel_ang)])
 
     if isinstance(model.state, Drive):
-        if abs(err_ang) > 0.25:
-            return (transition(model, state=Turn()), cmd.none)
+        if abs(err_ang) > DRIVE_REORIENT_ERR:
+            return (transition(model, state=Orient()), [cmd.stop])
 
         cell_offset = grid.current_cell_offset(
             grid=GRID,
@@ -240,16 +311,24 @@ def transition(model: Model, state: State) -> Model:
     return replace(model, state=state)
 
 
+def to_image_cv2(cvBridge: CvBridge) -> Callable[[ImageROS], Msg]:
+    """
+    Convert a ROS image message to a CV2 image in BGR format.
+    """
+    return compose(Image, partial(image.from_ros_image, cvBridge))
+
+
 ### Subscriptions ###
 
 
-def subscriptions(_: Model) -> List[Sub[Any, Msg]]:
+def subscriptions(model: Model) -> List[Sub[Any, Msg]]:
     """
     Subscriptions from which to receive messages.
     """
     return [
         sub.odometry(Odom),
         sub.directions(Directions),
+        sub.image_sensor(to_image_cv2(model.cv_bridge)),
     ]
 
 

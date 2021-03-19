@@ -4,9 +4,11 @@ ROS controller commands.
 
 # pyright: reportMissingTypeStubs=false
 
+from typing import List
 
 from geometry_msgs.msg import Twist, Vector3
 from rospy_util.controller.cmd import Cmd, none
+from robotics_final_project.msg import Cell, PathQuery
 
 __all__ = (
     "drive",
@@ -49,6 +51,18 @@ def twist_from_velocities(linear_x: float, angular_z: float) -> Twist:
     return Twist(
         angular=Vector3(x=0.0, y=0.0, z=angular_z),
         linear=Vector3(x=linear_x, y=0.0, z=0.0),
+    )
+
+
+def request_path(start: Cell, end: Cell, blocked: List[Cell]) -> Cmd[PathQuery]:
+    """
+    Send a request for a path calculated by A*.
+    """
+    return Cmd(
+        topic_name="/path_input",
+        message_type=PathQuery,
+        message_value=PathQuery(start=start, end=end, blocked=blocked),
+        latch_publisher=True,
     )
 
 

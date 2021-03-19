@@ -55,14 +55,7 @@
     <include>
       <uri>model://orb</uri>
       <name>orb_1</name>
-      <pose>-6.5 3.5 0.25 0 0 0</pose>
-      <static>1</static>
-    </include>
-
-    <include>
-      <uri>model://orb</uri>
-      <name>orb_2</name>
-      <pose>-1.12 -0.98 0.25 0 0 0</pose>
+      <pose>2.73 1.22 0.25 0 0 0</pose>
       <static>1</static>
     </include>
 
