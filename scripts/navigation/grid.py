@@ -2,7 +2,9 @@
 
 from dataclasses import dataclass
 import math
+from typing import List
 
+from rospy_util.mathf import sign
 from rospy_util.turtle_pose import TurtlePose
 from rospy_util.vector2 import Vector2
 import rospy_util.vector2 as v2
@@ -11,68 +13,100 @@ from robotics_final_project.msg import Cell
 
 @dataclass
 class Grid:
+    """
+    A mapping of locations in 2D space to discrete cells.
+    """
+
     len_cell: float
     origin: Vector2
 
 
-def current_cell_offset(grid: Grid, pose: TurtlePose) -> float:
-    current_cell = locate_pose(grid, pose)
+def current_cell_offset(
+    grid: Grid,
+    cell_current: Cell,
+    cell_next: Cell,
+    pose: TurtlePose,
+) -> float:
+    """
+    Find the perpendicular offset of the bot from the line
+    bisecting the cell it is traveling through.
+    """
     position = pose.position - grid.origin
 
-    (length, component) = (
-        (current_cell.row, position.y)
-        if facing_horizontal(pose.yaw)
-        else (current_cell.col, position.x)
+    (length, component, direction) = (
+        (cell_current.row, position.y, sign(cell_next.row - cell_current.row))
+        if cells_horizontally_adjacent(cell_current, cell_next)
+        else (cell_current.col, position.x, sign(cell_next.col - cell_current.col))
     )
 
     center = (length + 0.5) * grid.len_cell
 
-    return center - component
-
-
-def facing_horizontal(yaw: float) -> bool:
-    # TODO - eh (should encode directions manually) [also looks gross]
-    return (
-        math.pi / -4.0 < yaw < math.pi / 4.0 or math.pi / -0.75 > yaw > math.pi / 0.75
-    )
+    return direction * (center - component)
 
 
 def next_cell_direction(
-    grid: Grid,
+    cell_current: Cell,
+    cell_next: Cell,
     pose: TurtlePose,
-    next_cell: Cell,
 ) -> float:
-    current_cell = locate_pose(grid, pose)
-    dir_absolute = direction_between_cells(current_cell, next_cell)
+    """
+    Calculate the angular displacement between the robot's current yaw and
+    the direction from one cell to the next.
+    """
+    dir_absolute = direction_between_cells(cell_current, cell_next)
 
     return v2.signed_angle_between(v2.from_angle(pose.yaw), dir_absolute)
 
 
-def next_cell_adjacent(
-    grid: Grid,
-    pose: TurtlePose,
-    next_cell: Cell,
-) -> bool:
-    current_cell = locate_pose(grid, pose)
-    return cells_are_adjacent(current_cell, next_cell)
-
-
 def direction_between_cells(first: Cell, second: Cell) -> Vector2:
+    """
+    Calculate a vector from one cell to another.
+    """
     displacement = Vector2(second.col - first.col, second.row - first.row)
     return v2.normalize(displacement)
 
 
+def path_is_valid(path: List[Cell]) -> bool:
+    """
+    Check a list of cells to see if they form a traversable path.
+    """
+    return all([cells_are_adjacent(*z) for z in zip(path[:-1], path[1:])])
+
+
 def cells_are_adjacent(first: Cell, second: Cell) -> bool:
-    # TODO - could rewrite in terms of above function
-    displacement = (second.row - first.row, second.col - first.col)
-    return displacement in [(0, 1), (1, 0), (-1, 0), (0, -1)]
+    """
+    Check if two cells are vertically or horizontally adjacent to one another.
+    """
+    return cells_vertically_adjacent(first, second) or cells_horizontally_adjacent(
+        first, second
+    )
+
+
+def cells_vertically_adjacent(first: Cell, second: Cell) -> bool:
+    """
+    Check if two cells are vertically (row-wise) adjacent to one another.
+    """
+    return abs(first.row - second.row) == 1 and (first.col - second.col == 0)
+
+
+def cells_horizontally_adjacent(first: Cell, second: Cell) -> bool:
+    """
+    Check if two cells are horizontally (column-wise) adjacent to one another.
+    """
+    return abs(first.col - second.col) == 1 and (first.row - second.row == 0)
 
 
 def locate_pose(grid: Grid, pose: TurtlePose) -> Cell:
+    """
+    Map the robot's current pose to a cell in a grid.
+    """
     return locate_position(grid, pose.position)
 
 
 def locate_position(grid: Grid, pos: Vector2) -> Cell:
+    """
+    Map a 2D position vector to a cell in a grid.
+    """
     (x, y) = pos - grid.origin
 
     row = math.floor(y / grid.len_cell)
