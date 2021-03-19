@@ -65,6 +65,40 @@ measurements, the light was not present, and thus it did not appear in the robot
 image feed. Opting to use a placeholder for lights, we put this task aside
 in order to focus on sensory controls and the robot implementation itself.
 
+### Message Passing
+
+Since we originally thought that the A* algorithm would take a nontrivial amount of
+time to compute a path to the destination, we broke up our code into two nodes:
+path navigation using sensory controls and the A* algorithm. A message passing
+interface is necessary for the navigation node to request a path to follow
+and for the A* node to send that path back to the navigation node.
+
+#### Grid-Based Spatial Indexing
+
+Code locations and descriptions
+- [`msgs/Cell.msg`](scripts/Cell.msg)
+  Our maze map is spatially indexed into a 13x13 grid of cells, each of which we can
+  reference using row and column identifiers. We internally use the bot's current cell
+  in all of our path-related algorithms to simplify our map space and lower the amount 
+  of computation necessary.
+
+#### Paths
+
+Code locations and descriptions
+- [`msgs/Path.msg`](scripts/Path.msg)
+  A path is defined as a list of adjacent cells in the map. The A* algorithm will
+  calculate the shortest path (fewest number of cells traversed) from a starting
+  cell to a destination cell.
+
+#### Path Requesting
+
+Code locations and descriptions
+- [`msgs/PathRequest.msg`](scripts/PathRequest.msg)
+  Our navigation module has no map knowledge and can only determine its current cell,
+  its destination cell, and cells that are obstructed due to light. When the robot
+  is first initialized or needs to recompute a path, it sends a path request to our
+  A* node containing the above information, then waits to receive a calculated path to 
+  follow.
 
 ### Sensory Controls
 
@@ -82,38 +116,40 @@ environment. Within the above two tracks, this entails having the bot stay cente
 between the two walls of the pathway, and performing turns when the path changes
 directions. The controls aim to perform these tasks while still allowing the bot
 to move decently quickly (in the above demonstrations, TurtleBot3 moves at 0.6 m/s).
-Although currently a standalone implementation, we hope to have movement controls
-operate alongside A* path-finding in our final product.
+In our current implementation, the bot uses odometry to follow a path calculated by the A* algorithm to reach a destination.
 
 Code locations and descriptions
-- [`scripts/sensor_nav.py`](scripts/sensor_nav.py)
-  - Driving forward: Lines 207-259 of `update(msg. model)`  
-    Select the longest LiDAR ranges from the front-left and front-right of the
-    robot. For each side, if the longest range is greater than a threshold
-    distance, consider it possible to turn in that direction. If there is not a
-    wall in front of the bot, consider it possible to continue moving forward as
-    well.
-
-    If no directions are considered possible, then stop moving. Otherwise, randomly
-    choose a direction (we'll later use A* specifying directions; random assignment
-    is only for this demonstration).
-
-    If that direction is forward, compute angular error (angular difference between
-    shortest range to wall and right angles on sides of the bot) and positional
-    error (difference in distances from the bot to left and right walls). Aggregate
-    these into a single error value, compute angular velocity, and turn with such
-    to correct orientation while moving forward.
+- [`scripts/navigate.py`](scripts/navigate.py)
+  - Proportional control: [Lines 221–251 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L221-L251)
+    Use odometry offsets to calculate a proportional control angular velocity 
+    (`err_ang`) for the bot to face the next cell on the path it is following.
+    Once the bot enters the cell it is trying to navigate to, begin angling it toward 
+    the next cell on the path.
+    
+  - Reorientation (`Orient`): [Lines 253–260 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L253-L260)
+    When the bot recomputes a path to the destination or significantly deviates from
+    the center of the path, stop moving forward and turn to face the next cell.
+    
+    If the bot is facing the next cell, switch to the `Drive` state for moving to it.
+    
+  - Driving forward (`Drive`): [Lines 262–289 of `update(msg. model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L262-L289)
+    If the bot's current heading is way off course, switch to the `Orient` state  
+    to reorient it before continuing to follow the path.
+    
+    If the bot's heading is roughly in the same direction the next cell in the path
+    is, calculate an additional positional error (`err_lin`, difference in distances 
+    from the bot to left and right walls). Aggregate this with `err_ang` into a single 
+    error value, compute angular velocity, and turn with such to correct orientation 
+    while moving forward.
 
     If the direction is left or right, switch to the `Turn` state for performing
     a turn in said direction.
 
-  - Performing turns: Lines 261-288 of `update(msg, model)`  
-    Check if LiDAR ranges on the side to which the bot is turning are under
-    a set distance long (implying the robot is now adjacent to a wall on that
-    side) and if the closest object in front of the robot is far away (implying
-    the robot is now facing the empty hallway it has entered). If these conditions
-    hold, the turn is over, and switch to the `Drive` state. Otherwise, execute
-    the turn with a fixed angular and linear velocity.
+  - Performing turns (`Turn`): [Lines 291-296 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L291-L296)
+    If the bot is roughly facing the direction it is turning toward, switch to the
+    `Drive` state because the turn is over.
+    Otherwise, use `err_ang` to angle the bot to face the desired turn direction while 
+    preserving linear velocity.
 
 #### Simple Light Evasion
 
@@ -139,13 +175,13 @@ Code locations and descriptions
     values and positions of the pixels in the image with minimum and maximum
     value (brightness). Return the value and position of the maximum value pixel.
 
-- [`scripts/sensor_nav.py`](scripts/sensor_nav.py)
-  - Detecting visible lights: Lines 290-306 of `update(msg, model)`  
+- [`scripts/navigate.py`](scripts/navigate.py)
+  - [Detecting visible lights: Lines 181–196 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L181-L196)
     Call `locate_brightest` to find the value of the brightest pixel in the
     current view of the robot camera. If this value is greater than a set threshold
-    for the brightness of a light, transition to the `Spin` state in order to
-    face away from and escape the light. If the brightest pixel is under the
-    threshold, assume there is no light in frame and do nothing.
+    for the brightness of a light, transition to the `Request` state in order to
+    calculate a new path to the destination and escape the light. If the brightest 
+    pixel is under the threshold, assume there is no light in frame and do nothing.
 
   - Evading visible lights: Lines 313-336 of `update(msg, model)`  
     Compute an error factor between the current direction of the robot and the
