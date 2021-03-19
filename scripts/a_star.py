@@ -71,6 +71,8 @@ class AStar:
         self.starting_position = cell_from_msg(msg.start)
         self.goal = cell_from_msg(msg.end)
         self.blocked_by_light = [cell_from_msg(c) for c in msg.blocked]
+        # TODO: Ensure this works
+        self.direction = msg.direction
         # Reset data fields for fresh calculation
         self.open_list = []
         self.closed_list = []
@@ -133,7 +135,10 @@ class AStar:
                 index = self.find_index(q.i, q.j)
                 temp_cell.g = self.cell_details[index].g + 1
                 temp_cell.f = temp_cell.g + temp_cell.h
-                if not self.check_for_light(temp_cell.i, temp_cell.j):
+                if not (
+                    self.check_for_light(temp_cell.i, temp_cell.j)
+                    and self.direction == "north"
+                ):
                     successors[0] = temp_cell
 
             if self.check_east(q):
@@ -146,7 +151,10 @@ class AStar:
                 index = self.find_index(q.i, q.j)
                 temp_cell.g = self.cell_details[index].g + 1
                 temp_cell.f = temp_cell.g + temp_cell.h
-                if not self.check_for_light(temp_cell.i, temp_cell.j):
+                if not (
+                    self.check_for_light(temp_cell.i, temp_cell.j)
+                    and self.direction == "north"
+                ):
                     successors[1] = temp_cell
 
             if self.check_south(q):
@@ -159,7 +167,10 @@ class AStar:
                 index = self.find_index(q.i, q.j)
                 temp_cell.g = self.cell_details[index].g + 1
                 temp_cell.f = temp_cell.g + temp_cell.h
-                if not self.check_for_light(temp_cell.i, temp_cell.j):
+                if not (
+                    self.check_for_light(temp_cell.i, temp_cell.j)
+                    and self.direction == "north"
+                ):
                     successors[2] = temp_cell
 
             if self.check_west(q):
@@ -172,7 +183,10 @@ class AStar:
                 index = self.find_index(q.i, q.j)
                 temp_cell.g = self.cell_details[index].g + 1
                 temp_cell.f = temp_cell.g + temp_cell.h
-                if not self.check_for_light(temp_cell.i, temp_cell.j):
+                if not (
+                    self.check_for_light(temp_cell.i, temp_cell.j)
+                    and self.direction == "north"
+                ):
                     successors[3] = temp_cell
 
             # now, check each successor
