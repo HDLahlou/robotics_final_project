@@ -6,18 +6,13 @@ import math
 from rospy_util.turtle_pose import TurtlePose
 from rospy_util.vector2 import Vector2
 import rospy_util.vector2 as v2
+from robotics_final_project.msg import Cell
 
 
 @dataclass
 class Grid:
     len_cell: float
     origin: Vector2
-
-
-@dataclass
-class Cell:
-    row: int
-    col: int
 
 
 def current_cell_offset(grid: Grid, pose: TurtlePose) -> float:
