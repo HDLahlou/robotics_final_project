@@ -152,12 +152,13 @@ Code locations and descriptions
     Otherwise, compute an angular velocity proportional to the error, and spin
     around with that velocity.
     
-## A* Search Algorithm 
+### A* Search Algorithm 
 
 TODO combining this with motion code 
 
 (Note: we describe the grid square as "cells" in this document but they may be referred to as "nodes" in code comments; these terms can be used interchangeably.)
 
+#### aaaaa
 Code location and descriptions
 - [`scripts/a_star.py`](scripts/a_star.py)
   - Initialize every grid square of the map as a `Cell()`, which has the following attributes. 
@@ -195,20 +196,21 @@ Code location and descriptions
       - `check_north` checks if the robot can go north from `q`. If the robot can move in that direction, set the north successor equal to the `Cell` and set `q` as the parent 
 
       - Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west
- 
-For example, the cell at [2][2] in the image below has a `successor` to its north and its east, as indicated by the blue arrows. 
-The array indices of the cells are in row-major order:
-
-<img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
 
       - For every valid successor:
           
           - If the successor is equal to `goal`, stop the search 
     
           - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`.  
+          
+          - Push 'q' to the closed list 
     
   - `trace_path` the final path found by the A* search algorithm and publishes it to TODO
 
+The cell at [2][2] in the image below has a `successor` to its north and its east, as indicated by the blue arrows. 
+The array indices of the cells are in row-major order:
+
+<img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
 
 
 ## Challenges
