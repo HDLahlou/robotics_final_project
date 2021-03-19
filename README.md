@@ -12,20 +12,80 @@ a survival game: the player operates one TurtleBot in a dark maze while another
 cannot stay in the glow of the player's flashlight; thus, the monster bot has to
 be smart in planning its path to the player.
 
-The main components of our project are A* Search and Sensory Controls, a combination we've
-formulated as LASER: the Light A* Search Evasion Routine. The A* Search takes any starting position and goal position in the maze and finds the best path. The robot uses its Sensory Controls to traverse the maze, center itself in the maze hallways, avoid wall collisions, make smooth turns, and detect light. When a cell is designated as blocked by light, the A* Search takes this into account and recalculates the new best past.   
+The main components of our project are A* Search and Sensory Controls, a combination we've formulated as LASER: the Light A* Search Evasion Routine. The A* Search takes any starting position and goal position in the maze and finds the best path. The robot uses its Sensory Controls to traverse the maze, center itself in the maze hallways, avoid wall collisions, make smooth turns, and detect light. When a cell is designated as blocked by light, the A* Search takes this into account and recalculates the new best past.   
 
 ## How to Run LASER 
 
-(change if needed) We have intialized [] as the starting cell and [] as the goal cell. The goal cell is set equal to the maze cell of the player's odom pose 
+`TODO terminal commands and description`
 
-These can be changed in (code location). 
+You can teleop the player robot and observ the monster robot's behavior. 
 
-Terminal commands
-
-Any necessary package installations? 
+TODO Any necessary package installations? 
 
 ## System Architecture
+
+### A* Search Algorithm 
+
+A* search is implemented in [`scripts/a_star.py`](scripts/a_star.py).
+
+(Note: we describe the grid squares as "cells" in this document, but they may be referred to as "nodes" in code comments; these terms can be used interchangeably.)
+
+#### Cells 
+
+<img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
+
+We initialize every grid square of the map as a `Cell()`, which has the following attributes. 
+
+- `i`: row index
+
+- `j`: column index
+
+- `parent_i`: parent row index: 
+
+- `parent_j`: parent column index
+
+- `f`: equal to `g + h`; the algorithm processes the cell with the lowest f 
+
+- `g`: number of cells traversed to get from the starting cell to this cell 
+
+- `h`: estimated distance from this cell to the goal cell
+  
+ This information is stored in `cell_details` and is updates as the A* search is performed.
+
+
+ #### Finding the best path 
+  
+The `starting_position` cell 11111and the `goal` cell
+  
+  - Initialize the map data
+  
+  - Initialize `open_list` and `closed_list` as empty arrays 
+  
+  - `find_path` perform the A* search 
+  
+    - `starting_position` cell is appended to `open_list` 
+    
+    - While the `open_list` is not empty, set `q`  equal cell with the smallest value of of the open list
+
+      - Initilize an array of 4 `successors` with the value -1; these are in the order of north, east, south, and west
+
+      - `check_north` checks if the robot can go north from `q`. If the robot can move in that direction, set the north successor equal to the `Cell` and set `q` as the parent 
+
+      - Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west
+
+      - For every valid successor:
+          
+          - If the successor is equal to `goal`, stop the search 
+    
+          - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`.  
+          
+          - Push 'q' to the closed list 
+    
+  - `trace_path` the final path found by the A* search algorithm and publishes it to TODO
+
+The cell at [2][2] in the image below has a `successor` to its north and its east, as indicated by the blue arrows. 
+The array indices of the cells are in row-major order:
+
 
 ### Gazebo Environments
 
@@ -190,66 +250,10 @@ Code locations and descriptions
     Otherwise, compute an angular velocity proportional to the error, and spin
     around with that velocity.
     
-### A* Search Algorithm 
 
-TODO combining this with motion code 
+### Player Input 
 
-(Note: we describe the grid square as "cells" in this document but they may be referred to as "nodes" in code comments; these terms can be used interchangeably.)
-
-#### aaaaa
-Code location and descriptions
-- [`scripts/a_star.py`](scripts/a_star.py)
-  - Initialize every grid square of the map as a `Cell()`, which has the following attributes. 
-  
-    - `i`: row index
-
-    - `j`: column index
-
-    - `parent_i`: parent row index: 
-
-    - `parent_j`: parent column index
-
-    - `f`: equal to `g + h`; the algorithm processes the cell with the lowest f 
-
-    - `g`: number of cells traversed to get from the starting cell to this cell 
-
-    - `h`: estimated distance from this cell to the goal cell
-  
-    Store this information in `cell_details` 
-  
-  - Set the `starting_position` cell and the `goal` cell
-  
-  - Initialize the map data
-  
-  - Initialize `open_list` and `closed_list` as empty arrays 
-  
-  - `find_path` perform the A* search 
-  
-    - `starting_position` cell is appended to `open_list` 
-    
-    - While the `open_list` is not empty, set `q`  equal cell with the smallest value of of the open list
-
-      - Initilize an array of 4 `successors` with the value -1; these are in the order of north, east, south, and west
-
-      - `check_north` checks if the robot can go north from `q`. If the robot can move in that direction, set the north successor equal to the `Cell` and set `q` as the parent 
-
-      - Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west
-
-      - For every valid successor:
-          
-          - If the successor is equal to `goal`, stop the search 
-    
-          - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`.  
-          
-          - Push 'q' to the closed list 
-    
-  - `trace_path` the final path found by the A* search algorithm and publishes it to TODO
-
-The cell at [2][2] in the image below has a `successor` to its north and its east, as indicated by the blue arrows. 
-The array indices of the cells are in row-major order:
-
-<img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
-
+After testing the above components with stationary lights, we added a second robot which can be be operated by the player. The player robot has a light sphere attached to the front of it. Now, the `goal` cell is always set equal to the player robot's current `cell`. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. If the monster robot runs into the player robot's light
 
 ## Challenges
 
@@ -307,23 +311,16 @@ up short of the end. However, there could be three times the twists in the road
 ahead. Really consider if you want to continue on that path, and be aware of
 everything left unattended if you do choose to continue.
 
-### Player Input 
-
-After testing with stationary ligtattach a light to a robot which can be teleoperated by a human player. As the player moves,
+- Visualzing the occupancy array relative to our map was a major challenge. When our `check_north` and other wall-checking functions returned the wrong values, it was hard to discern why. Eventually, we had to swap the names of some of the functions in order to match the rotation of occupancy array. If we were to do a similar project in the future, we would write code that visualizes these kinds of functions. Creating an an overlay of the map that places a red dot on the edges of cells blocked by walls would have helped us a lot in checking the accuracy the wall-checkers, for example. Having the visual would've saved us the time comparing the printed booleans of the wall-checker to the map.
 
 ## Future Work
 
-The next step is to complete the rest of the gamification aspects. 
- 
- 
-- Create a first-person game view using the camera feed of the teleop robot.
-  Augment this view using visual filters and sound effects.
-- Adding more autonomous "monster" robots 
-- Write a short script for more familiar teleop controls (the TurtleBot3 teleop
-  package uses a control scheme that varies from typical game controls in a few
-  ways). Possibly ask team Controller Teleop about using their controller
-  alongside our project.
+The next step is to enhance the game aspects. We would create a first-person game view using the camera feed of the player robot, and augment this view using visual filters and sound effects. For example, sound could indicate that the monster is approaching, so the player would attempt to turn around and catch it in their light. We would also add more autonomous monster robots, perhaps some with different behavior than the one implemented so far.  
+
+The TurtleBot3 teleop package uses a control scheme that varies from typical game controls in a few ways, so we would write a short script for more familiar teleop controls. We could ask team Controller Teleop about using their controller alongside our project!
   
-  ## Demo
+## Demo
   
-  <img src="demo(s) go here" alt="occupancy grid" width="800"/>
+TODO describe the demo here: 
+
+<img src="demo(s) go here" alt="occupancy grid" width="800"/>
