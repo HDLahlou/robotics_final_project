@@ -170,7 +170,11 @@ application). The work we put it in can perhaps still be salvaged, assuming we
 can spawn corresponding lights on the server side; regardless, the endeavor
 proved a time sink, one for which a good takeaway is in need.
 
-Another major challenge was how to detect which sides of any given node are blocked by a wall. OccupancyGrid() data array is is both rotated 90 degrees and has a different origin than the RViz visualization of the map. 
+Another major challenge was how to detect which sides of any given node are blocked by a wall. The OccupancyGrid() data array does not neatly overlay and match the RViz visualization of the map. The OccupancyGrid() is both rotated 90 degrees and has a different origin than the actual map. We 
+
+### A* Search 
+
+
 
 ## Takeaways
 
