@@ -166,10 +166,6 @@ Code location and descriptions
 
     - `j`: column index
 
-    - `x`: x-coordinate
-
-    - `y`: y-coordinate
-
     - `parent_i`: parent row index: 
 
     - `parent_j`: parent column index
@@ -194,24 +190,26 @@ Code location and descriptions
     
     - While the `open_list` is not empty, set `q`  equal cell with the smallest value of of the open list
 
-      - Initilize an array of 4 `successors` with the value -1; these are in the order of north, east, south, and west. 
+      - Initilize an array of 4 `successors` with the value -1; these are in the order of north, east, south, and west
 
       - `check_north` checks if the robot can go north from `q`. If the robot can move in that direction, set the north successor equal to the `Cell` and set `q` as the parent 
 
-      - Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west. 
-
-      - For every valid successor:
-          
-          - If the successor is equal to `goal`, stop the search 
-          - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`. 
-
-    
-  - `trace_path` the final path found by the A* search algorithm and publishes it to TODO
-
+      - Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west
+ 
 For example, the cell at [2][2] in the image below has a `successor` to its north and its east, as indicated by the blue arrows. 
 The array indices of the cells are in row-major order:
 
 <img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
+
+      - For every valid successor:
+          
+          - If the successor is equal to `goal`, stop the search 
+    
+          - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`.  
+    
+  - `trace_path` the final path found by the A* search algorithm and publishes it to TODO
+
+
 
 ## Challenges
 
