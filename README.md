@@ -37,22 +37,26 @@ The main components of our project are A* Search and Sensory Controls, a combina
     $ cd ~/catkin_ws
     $ catkin_make
     ```
-6) Run our ```setup.launch``` file, which must be run from outside the virtual environment.
+    
+5) Run our ```setup.launch``` file, which must be run from outside the virtual environment.
     ```
     $ roslaunch robotics_final_project setup.launch
     ```
 
-5) Run our teleop controller.
+6) Return to the project directory and launch a shell in the virtual environment containing the installed packages.
+    ```
+    $ cd src/robotics_final_project
+    $ pipenv shell
+    ```
+    
+7) Run our teleop controller.
     ```
     $ rosrun robotics_final_project player.py
     ```
 
-6) Launch a shell in the virtual environment containing the installed packages.
-    ```
-    $ pipenv shell
-    ```
+8) Unpause time in Gazebo.
 
-7) Run our ```run.launch``` file to begin the autonomous bot’s algorithm.
+9) Run our ```run.launch``` file to begin the autonomous bot’s algorithm.
     ```
     $ roslaunch robotics_final_project run.launch
     ```
