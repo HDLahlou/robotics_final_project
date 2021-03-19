@@ -163,35 +163,37 @@ TODO combining this with motion code
 
 Code location and descriptions
 - [`scripts/a_star.py`](scripts/a_star.py)
-  - Initializes every grid square of the map as a `Cell()`, which has the following attributes. 
+  - Initialize every grid square of the map as a `Cell()`, which has the following attributes. 
   
-    -`i`: row index
+    - `i`: row index
 
-    -`j`: column index
+    - `j`: column index
 
-    -`x`: x-coordinate
+    - `x`: x-coordinate
 
-    -`y`: y-coordinate
+    - `y`: y-coordinate
 
-    -`parent_i`: parent row index: 
+    - `parent_i`: parent row index: 
 
-    -`parent_j`: parent column index
+    - `parent_j`: parent column index
 
-    -`f`: equal to `g + h`; the algorithm processes the cell with the lowest f 
+    - `f`: equal to `g + h`; the algorithm processes the cell with the lowest f 
 
-    -`g`: number of cells traversed to get from the starting cell to this cell 
+    - `g`: number of cells traversed to get from the starting cell to this cell 
 
-    -`h`: estimated distance from this cell to the goal cell
+    - `h`: estimated distance from this cell to the goal cell
   
-  - Sets the `starting_position` cell and the `goal` cell
+    Store this information in `cell_details` 
   
-  - Initialized the map 
+  - Set the `starting_position` cell and the `goal` cell
+  
+  - Initialize the map data
   
   - Initialize `open_list` and `closed_list` as empty arrays 
   
-  - `find_path` performs the A* search 
+  - `find_path` perform the A* search 
   
-    - The 
+    - `starting_position` cell is appended to `open_list` 
     
     - find node `q` with the smallest f of the open list  
     
