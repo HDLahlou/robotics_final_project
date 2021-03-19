@@ -157,10 +157,31 @@ Code locations and descriptions
     Otherwise, compute an angular velocity proportional to the error, and spin
     around with that velocity.
     
-## A* Search 
+## A* Search Algorithm 
 
-Code locations and descriptions
+TODO combining this with motion code 
+
+Code location and descriptions
 - [`scripts/a_star.py`](scripts/a_star.py)
+  - Initializes every grid square of the map as a `Cell()`, which has the following attributes. 
+  -`i`: row index
+  -`j`: column index
+  -`x`: x-coordinate
+  -`y`: y-coordinate
+  -`parent_i`: parent row index: 
+  -`parent_j`: parent column index
+  -`f`: equal to `g + h`; the algorithm processes the cell with the lowest f 
+  -`g`: number of cells traversed to get from the starting cell to this cell 
+  -`h`: estimated distance from this cell to the goal cell
+
+For example, the cell at [2][2] in the image below has a `successor` to its north and its east, as indicated by the blue arrows. 
+The array indices of the cells are in row-major order:
+
+
+
+<img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
+
+
 
 
 ## Challenges
@@ -189,7 +210,7 @@ proved a time sink, one for which a good takeaway is in need. Ultimately, we dec
 Another major challenge was how to detect which sides of any given node are blocked by a wall when performing the A* search. We first tried to convert an `(x,y)` coordinate into its corresponding index of the OccupancyGrid() data array, `self.map.data`. However, trying to get this calculation proved to be extremely frustrating: `self.map.data` has a different origin than the true origin visualized in RViz. Additionally, the occupancy array is rotated from the map alignment we based the rest of our code off of, and it has to be scaled down with `self.map.info.resolution`. Our solution was to forgo doing these `(x,y)`-to-occupacy-grid conversions. Instead, we rotated `self.map.data` to the match the orientation of the map, and called this rotated version `self.truemap`. 
 The OccupancyGrid() is both rotated 90 degrees and has a different origin than the actual map. 
 
-We used replaced the house map in Particle Filter Project with our maze to help us visualize this rotation. The image below shows the the `self.map.data` after we rotated it 90 degrees clockwise and scaled it down. (The origin doesn't match, but now that we are not using `(x,y)` values, it doesn't matter; this is just for ease of visualization). 
+We replaced the house map in Particle Filter Project with our maze to help us visualize this rotation. The image below shows the the `self.map.data` after we rotated it 90 degrees clockwise and scaled it down. (The origin doesn't match, but now that we are not using `(x,y)` values, it doesn't matter; this is just for ease of visualization). 
 
 <img src="media/occupancy.png" alt="occupancy grid" width="400"/>
 
