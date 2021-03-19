@@ -1,0 +1,63 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+  <model name='light'>
+    <link name='link'>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia>
+          <ixx>0.00000015</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.00000015</iyy>
+          <iyz>0</iyz>
+          <izz>0.00000015</izz>
+        </inertia>
+        <pose>0 0 0 0 0 0</pose>
+      </inertial>
+      <self_collide>0</self_collide>
+      <enable_wind>0</enable_wind>
+      <kinematic>0</kinematic>
+      <pose>0 0 0 0 0 0</pose>
+      <gravity>1</gravity>
+      <visual name='orb'>
+        <geometry>
+          <sphere>
+            <radius>0.03</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/BlueGlow</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+          <shader type='pixel'>
+            <normal_map>__default__</normal_map>
+          </shader>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>0 0 0 1</specular>
+          <emissive>0.2 0.2 1 1</emissive>
+          <lighting>0</lighting>
+        </material>
+        <pose>0 0 0 0 0 0</pose>
+        <cast_shadows>0</cast_shadows>
+      </visual>
+      <visual name='back'>
+        <geometry>
+          <box>
+            <size>0.07 0.07 0.07</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Grey</name>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+          </script>
+        </material>
+        <pose>-0.02 0 0 0 0 0</pose>
+      </visual>
+    </link>
+    <static>0</static>
+    <allow_auto_disable>1</allow_auto_disable>
+  </model>
+</sdf>

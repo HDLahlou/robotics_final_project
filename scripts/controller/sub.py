@@ -35,12 +35,12 @@ def directions(to_msg: Callable[[List[Cell]], Msg]) -> Sub[Path, Msg]:
     )
 
 
-def odometry(to_msg: Callable[[TurtlePose], Msg]) -> Sub[Odometry, Msg]:
+def odometry(bot: str, to_msg: Callable[[TurtlePose], Msg]) -> Sub[Odometry, Msg]:
     """
     Receive odometry sensor data.
     """
     return Sub(
-        topic_name="/odom",
+        topic_name=f"/{bot}/odom",
         message_type=Odometry,
         to_msg=lambda odom: to_msg(tp.from_pose(odom.pose.pose)),
     )
@@ -51,7 +51,7 @@ def laser_scan(to_msg: Callable[[LaserScan], Msg]) -> Sub[LaserScan, Msg]:
     Receive LiDAR sensor data.
     """
     return Sub(
-        topic_name="/scan",
+        topic_name="/hunter/scan",
         message_type=LaserScan,
         to_msg=to_msg,
     )
@@ -62,7 +62,7 @@ def image_sensor(to_msg: Callable[[Image], Msg]) -> Sub[Image, Msg]:
     Receive image sensor data.
     """
     return Sub(
-        topic_name="/camera/rgb/image_raw",
+        topic_name="/hunter/camera/rgb/image_raw",
         message_type=Image,
         to_msg=to_msg,
     )

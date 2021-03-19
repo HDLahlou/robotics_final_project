@@ -46,17 +46,15 @@
       <uri>model://maze</uri>
     </include>
 
-    <!-- <include>
-      <uri>model://box</uri>
-      <pose>-0.122155 1.14605 0.5 0 0 0</pose>
-      <static>1</static>
-    </include> -->
 
     <include>
-      <uri>model://orb</uri>
-      <name>orb_1</name>
-      <pose>2.73 1.22 0.25 0 0 0</pose>
-      <static>1</static>
+      <uri>model://player_light</uri>
+      <pose>3.44 1.09 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://hunter</uri>
+      <pose>-2.5 1.2 0 0 0 3.1415</pose>
     </include>
 
     <gui fullscreen="0">

@@ -1,0 +1,19 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+  <model name='player_light'>
+    <include>
+      <uri>model://light</uri>
+      <pose>0.03 0 0.14 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://player</uri>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+
+    <joint name='light_joint' type='fixed'>
+      <parent>player::base_footprint</parent>
+      <child>light::link</child>
+    </joint>
+  </model>
+</sdf>
