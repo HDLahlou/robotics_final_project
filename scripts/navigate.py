@@ -18,14 +18,9 @@ from navigation.grid import Cell, Grid
 import navigation.grid as grid
 from robotics_final_project.msg import PathQuery
 from perception import CvBridge, ImageBGR, ImageROS, image, light
-from util import approx_zero, compose, head, lerp_signed
+from util import approx_zero, compose, lerp_signed
 
 ### Model ###
-
-
-@dataclass
-class Request:
-    pass
 
 
 @dataclass
@@ -38,7 +33,25 @@ class Wait:
 
 
 @dataclass
-class Orient:
+class FaceCell:
+    """
+    Turn to face the next cell.
+    """
+
+    pass
+
+
+@dataclass
+class ApproachCell:
+    """
+    Turn to face the next cell.
+    """
+
+    pass
+
+
+@dataclass
+class FaceHeading:
     """
     Turn to face the next cell.
     """
@@ -64,22 +77,13 @@ class Turn:
     pass
 
 
-@dataclass
-class Spin:
-    """
-    Spin to face the direction opposite of the next cell.
-    """
-
-    pass
-
-
 State = Union[
-    Request,
     Wait,
-    Orient,
+    FaceCell,
+    ApproachCell,
+    FaceHeading,
     Drive,
     Turn,
-    Spin,
 ]
 
 
@@ -98,20 +102,20 @@ class Model:
     cv_bridge: CvBridge
     state: State
     path: List[Cell]
-    last_cell: Optional[Cell]
-    blocked_cells: List[Cell]
-    player_pos: Optional[Vector2]
+    headings: List[Vector2]
+    current_cell: Optional[Cell]
+    player_cell: Optional[Cell]
 
 
 CELL_DEST: Cell = Cell(8, 6)
 
 init_model: Model = Model(
     cv_bridge=CvBridge(),
-    state=Request(),
+    state=Wait("Awaiting path..."),
     path=[],
-    last_cell=None,
-    blocked_cells=[],
-    player_pos=None,
+    headings=[],
+    current_cell=None,
+    player_cell=None,
 )
 
 init: Tuple[Model, List[Cmd[Any]]] = (init_model, cmd.none)
@@ -149,7 +153,9 @@ class Image:
 
 @dataclass
 class Player:
-    position: Vector2
+    """"""
+
+    cell: Cell
 
 
 Msg = Union[
@@ -165,7 +171,7 @@ Msg = Union[
 DRIVE_VEL_LIN_MAX: float = 0.6
 DRIVE_VEL_LIN_MIN: float = 0.4
 DRIVE_VEL_ANG_MAX: float = 1.5 * math.pi
-DRIVE_REORIENT_ERR: float = 0.5
+DRIVE_REORIENT_ERR: float = 0.3
 
 TURN_VEL_LIN: float = 0.5
 TURN_VEL_ANG: float = 1.8 * math.pi
@@ -188,159 +194,223 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     and a list of commands to execute.
     """
 
-    if isinstance(msg, Image):
-        if (next_cell := head(model.path)) is not None and (
-            isinstance(model.state, Drive) or isinstance(model.state, Turn)
-        ):
-            # Compute value of brightest area in image.
-            (val_max, _) = light.locate_brightest(msg.image)
-
-            if val_max >= LIGHT_VAL_MIN:
-                # Value is sufficiently high; consider the detected object a light
-                # and begin spinning to escape.
-                new_model = replace(model, blocked_cells=[next_cell])
-                return (transition(new_model, state=Request()), [cmd.stop])
-
-        return (model, cmd.none)
-
     if isinstance(msg, Directions):
-        # TODO - standardize whether current cell is included
-        if not grid.path_is_valid(path := msg.path[1:]):
-            print("Path is invalid!")
+        if len(msg.path) < 2:
+            print(f"WARN: Received path of length {len(msg.path)}!")
             return (model, cmd.none)
 
-        new_state = Orient() if isinstance(model.state, Wait) else model.state
-        new_model = replace(model, path=path)
+        if not (headings := grid.validate_path(msg.path)):
+            print("WARN: Not all cells are adjacent in path!")
+            return (model, cmd.none)
+
+        # If the path is valid and the bot isn't already traversing one,
+        # orient toward the next cell
+
+        new_state = (
+            model.state
+            if len(model.path) > 1 and model.path[1] == msg.path[1]
+            else FaceCell()
+        )
+
+        new_model = replace(model, path=msg.path, headings=headings)
 
         return (transition(new_model, state=new_state), cmd.none)
 
-    if isinstance(msg, Player):
-        return (replace(model, player_pos=msg.position), cmd.none)
-
-    if isinstance(model.state, Wait):
-        return (model, [cmd.stop])
-
-    current_cell = grid.locate_pose(GRID, msg.pose)
-
-    if isinstance(model.state, Request):
-        if model.player_pos is None:
-            print("Awaiting player position...")
-            return (model, cmd.none)
-
-        dest_cell = grid.locate_position(GRID, model.player_pos)
-
-        return (
-            transition(model, state=Wait("Requesting path...")),
-            [cmd.request_path(current_cell, dest_cell, model.blocked_cells)],
+    if isinstance(msg, Player) and model.current_cell is not None:
+        # Send a request to the A* algorithm when the player robot changes cells
+        query_cmd: List[Cmd[PathQuery]] = (
+            [
+                cmd.request_path(
+                    start=model.current_cell,
+                    end=msg.cell,
+                    blocked=[],
+                    # TODO
+                    direction=model.headings[0] if model.headings else v2.up,
+                )
+            ]
+            if msg.cell != model.player_cell
+            else cmd.none
         )
 
-    if (next_cell := head(model.path)) is None:
-        return wait(model, reason="Path is empty")
+        return (replace(model, player_cell=msg.cell), query_cmd)
 
-    crossing_cells = current_cell == next_cell
+    if isinstance(msg, Odom):
+        current_cell = grid.locate_pose(GRID, msg.pose)
 
-    cmd_query: List[Cmd[PathQuery]] = (
-        [
-            cmd.request_path(
-                current_cell,
-                grid.locate_position(GRID, model.player_pos),
-                model.blocked_cells,
+        if isinstance(model.state, Wait):
+            return (replace(model, current_cell=current_cell), [cmd.stop])
+
+        # If the bot has crossed into a new cell, update the model
+        crossing = current_cell == model.path[1]
+
+        (path, headings) = (
+            (model.path[1:], model.headings[1:])
+            if crossing
+            else (model.path, model.headings)
+        )
+
+        if len(path) < 2:
+            # If the bot has finished traversing the path, stop
+            return wait(model, reason="Reached end of path", path=[])
+
+        next_cell = path[1]
+
+        new_model = replace(
+            model,
+            path=path,
+            headings=headings,
+            current_cell=current_cell,
+        )
+
+        if crossing and not v2.equals(model.headings[0], headings[0]):
+            # If the bot is crossing into a new cell and needs to turn
+            return (transition(new_model, state=Turn()), cmd.none)
+
+        # Calculate the angular offset between the robot's yaw and the direction
+        # of the next cell
+        angle_off = v2.signed_angle_between(v2.from_angle(msg.pose.yaw), headings[0])
+        err_ang = angle_off / math.pi
+
+        # Center the robot on the cell it's in before beginning path navigation
+        start_pos = grid.locate_cell(GRID, new_model.path[0])
+        to_start = start_pos - msg.pose.position
+
+        start_err_lin = v2.magnitude(to_start) / (0.5 * GRID.len_cell)
+        start_err_ang = (
+            v2.signed_angle_between(v2.from_angle(msg.pose.yaw), to_start) / math.pi
+        )
+
+        if isinstance(new_model.state, FaceCell):
+            if approx_zero(start_err_ang):
+                return (transition(new_model, state=ApproachCell()), cmd.none)
+
+            vel_ang = lerp_signed(
+                low=0.05 * math.pi,
+                high=1.0 * math.pi,
+                amount=start_err_ang,
             )
-        ]
-        if crossing_cells and model.player_pos is not None
-        else []
-    )
 
-    # TODO - can precompute headings
-    # TODO - do this in drive/turn state; no reassignment
-    if crossing_cells and model.last_cell is not None:
-        heading_old = grid.direction_between_cells(model.last_cell, current_cell)
+            return (new_model, [cmd.turn(vel_ang)])
 
-        # this is illegal
-        model = replace(model, path=model.path[1:])
+        if isinstance(new_model.state, ApproachCell):
+            if approx_zero(start_err_lin, epsilon=0.2):
+                return (transition(new_model, state=FaceHeading()), cmd.none)
 
-        #  this is also illegal
-        if (next_cell := head(model.path)) is None:
-            # TODO - wait for new path before this check [idk how]
-            return wait(model, reason="Path traversed")
+            vel_ang = lerp_signed(
+                low=0.0,
+                high=2.0 * math.pi,
+                amount=start_err_ang,
+            )
 
-        print(f"next cell is {next_cell}")
+            vel_lin = mathf.lerp(
+                low=0.05,
+                high=0.3,
+                amount=start_err_lin,
+            )
 
-        heading_new = grid.direction_between_cells(current_cell, next_cell)
+            return (
+                new_model,
+                [cmd.velocity(angular=start_err_ang, linear=vel_lin)],
+            )
 
-        if not v2.equals(heading_old, heading_new):
-            return (transition(model, state=Turn()), cmd_query)
-    else:
-        # TODO - not this
-        model = replace(model, last_cell=current_cell)
+        if isinstance(new_model.state, FaceHeading):
+            # If Orient, spin until it is facing the next cell
+            if approx_zero(err_ang):
+                return (transition(new_model, state=Drive()), [cmd.stop])
 
-    to_cell = grid.next_cell_direction(
-        cell_current=current_cell,
-        cell_next=next_cell,
-        pose=msg.pose,
-    )
+            vel_ang = lerp_signed(0.05 * math.pi, 1.0 * math.pi, err_ang)
 
-    err_ang = to_cell / math.pi
+            return (new_model, [cmd.turn(vel_ang)])
 
-    if isinstance(model.state, Orient):
+        if isinstance(new_model.state, Drive):
+            # If Drive, move forward toward the center of the next cell
+            if abs(err_ang) > DRIVE_REORIENT_ERR:
+                # If the robot isn't facing the path, reorient it
+                return (transition(new_model, state=FaceHeading()), [cmd.stop])
+
+            cell_offset = grid.current_cell_offset(
+                grid=GRID,
+                cell_current=current_cell,
+                cell_next=next_cell,
+                pose=msg.pose,
+            )
+
+            # Calculate the linear offset between the robot's position and
+            # the center of the cell it is traveling through
+            err_lin = cell_offset / GRID.len_cell
+            err = 0.5 * (err_ang + err_lin)
+
+            vel_ang = lerp_signed(
+                low=0,
+                high=DRIVE_VEL_ANG_MAX,
+                amount=err,
+            )
+
+            # Decrease the linear velocity if the robot is too close to a wall
+            vel_lin = mathf.lerp(
+                low=DRIVE_VEL_LIN_MAX,
+                high=DRIVE_VEL_LIN_MIN,
+                amount=10.0 * abs(err),
+            )
+
+            return (new_model, [cmd.velocity(angular=vel_ang, linear=vel_lin)])
+
+        # if isinstance(model.state, Turn):
         if approx_zero(err_ang):
-            new_model = replace(model)
-            return (transition(new_model, state=Drive()), [cmd.stop])
+            return (transition(new_model, state=Drive()), cmd.none)
 
-        vel_ang = lerp_signed(0.05 * math.pi, 1.0 * math.pi, err_ang)
+        vel_ang = lerp_signed(0, TURN_VEL_ANG, err_ang)
 
-        return (model, [cmd.turn(vel_ang)])
+        return (new_model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
 
-    if isinstance(model.state, Drive):
-        if abs(err_ang) > DRIVE_REORIENT_ERR:
-            return (transition(model, state=Orient()), [*cmd_query, cmd.stop])
+    if (
+        isinstance(msg, Image)
+        and len(model.path) > 1
+        and model.player_cell is not None
+        and (isinstance(model.state, Drive) or isinstance(model.state, Turn))
+    ):
+        # Compute value of brightest area in image.
+        (val_max, _) = light.locate_brightest(msg.image)
 
-        cell_offset = grid.current_cell_offset(
-            grid=GRID,
-            cell_current=current_cell,
-            cell_next=next_cell,
-            pose=msg.pose,
-        )
+        if val_max >= LIGHT_VAL_MIN:
+            # Value is sufficiently high; consider the detected object a light
+            # and request a new path.
 
-        err_lin = cell_offset / GRID.len_cell
+            blocked_cell = model.path[1]
 
-        err = 0.5 * (err_ang + err_lin)
+            if blocked_cell == model.player_cell:
+                return wait(model, reason="Destination blocked...")
 
-        vel_ang = lerp_signed(
-            low=0,
-            high=DRIVE_VEL_ANG_MAX,
-            amount=err,
-        )
+            cmd_query = cmd.request_path(
+                start=model.path[0],
+                end=model.player_cell,
+                blocked=[blocked_cell],
+                direction=model.headings[0],
+            )
 
-        vel_lin = mathf.lerp(
-            low=DRIVE_VEL_LIN_MAX,
-            high=DRIVE_VEL_LIN_MIN,
-            amount=10.0 * abs(err),
-        )
+            return (
+                transition(model, Wait(reason="Light detected, recalculating path")),
+                [cmd_query],
+            )
 
-        return (model, [*cmd_query, cmd.velocity(angular=vel_ang, linear=vel_lin)])
+        return (model, cmd.none)
 
-    if approx_zero(err_ang):
-        return (transition(model, state=Drive()), cmd_query)
-
-    vel_ang = lerp_signed(0, TURN_VEL_ANG, err_ang)
-
-    return (model, [*cmd_query, cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
+    return (model, cmd.none)
 
 
-def wait(model: Model, reason: str) -> Tuple[Model, List[Cmd[Any]]]:
+def wait(model: Model, reason: str, **kwargs: Any) -> Tuple[Model, List[Cmd[Any]]]:
     """
     Transition the bot to a wait state.
     """
-    return (transition(model, state=Wait(reason)), cmd.none)
+    return (transition(model, state=Wait(reason), **kwargs), cmd.none)
 
 
-def transition(model: Model, state: State) -> Model:
+def transition(model: Model, state: State, **kwargs: Any) -> Model:
     """
     Transition to a new state while printing a notification.
     """
     print(f"Begin {state}")
-    return replace(model, state=state)
+    return replace(model, state=state, **kwargs)
 
 
 def to_image_cv2(cvBridge: CvBridge) -> Callable[[ImageROS], Msg]:
@@ -361,8 +431,12 @@ def subscriptions(model: Model) -> List[Sub[Any, Msg]]:
         sub.odometry("hunter", Odom),
         sub.directions(Directions),
         sub.image_sensor(to_image_cv2(model.cv_bridge)),
-        sub.odometry("player", lambda p: Player(p.position)),
+        sub.odometry("player", player_cell),
     ]
+
+
+def player_cell(pose: TurtlePose) -> Msg:
+    return Player(grid.locate_position(GRID, pose.position))
 
 
 ### Run ###

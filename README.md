@@ -12,6 +12,7 @@ a survival game: the player operates one TurtleBot in a dark maze while another
 cannot stay in the glow of the player's flashlight; thus, the monster bot has to
 be smart in planning its path to the player.
 
+<<<<<<< HEAD
 The main components of our project are A* Search and Sensory Controls, a combination we've formulated as LASER: the Light A* Search Evasion Routine. The A* Search finds the best path from the monster to the player. The robot uses its Sensory Controls to traverse the maze, center itself in the maze hallways, avoid wall collisions, make smooth turns, and detect light. If the monster runs into the player's light, the A* Search takes this into account and recalculates the new best path to sneak up behind the player.
 
 ## How to Run LASER 
@@ -31,6 +32,17 @@ The main components of our project are A* Search and Sensory Controls, a combina
     ```
     $ pipenv install
     ```
+=======
+The main components of our project are A* Search and Sensory Controls, a combination we've formulated as LASER: the Light A* Search Evasion Routine. The A* Search takes any starting position and goal position in the maze and finds the best path. The robot uses its Sensory Controls to traverse the maze, center itself in the maze hallways, avoid wall collisions, make smooth turns, and detect light. When a cell is designated as blocked by light, the A* Search takes this into account and recalculates the new best past.   
+
+## How to Run LASER 
+
+`TODO terminal commands and description`
+
+You can teleop the player robot and observ the monster robot's behavior. 
+
+TODO Any necessary package installations? 
+>>>>>>> b13b515 (done i think)
 
 4) Run our ```setup.launch``` file, which must be run from outside the virtual environment.
     ```
@@ -90,8 +102,11 @@ measurements, the light was not present, and thus it did not appear in the robot
 image feed. Opting to use a placeholder for lights, we put this task aside
 in order to focus on sensory controls and the robot implementation itself.
 
+<<<<<<< HEAD
 ## System Architecture
 
+=======
+>>>>>>> b13b515 (done i think)
 ### Message Passing
 
 Since we originally thought that the A* algorithm would take a nontrivial amount of
@@ -126,6 +141,7 @@ Code locations and descriptions
   is first initialized or needs to recompute a path, it sends a path request to our
   A* node containing the above information, then waits to receive a calculated path to 
   follow.
+<<<<<<< HEAD
 
 ### A* Search Algorithm 
 
@@ -172,6 +188,8 @@ The function `find_path` finds the shortest path from `starting_position` (monst
  - Push 'q' to the closed list 
     
 When the search is completed, the function `trace_path` creates a list of best by starting at the `goal` cell in `cell_details` and tracing back through the parents until it reaches `starting_position`. Then, it publishes the path as a `Path.msg`. 
+=======
+>>>>>>> b13b515 (done i think)
 
 ### Sensory Controls
 
@@ -199,6 +217,7 @@ Code locations and descriptions
     Once the bot enters the cell it is trying to navigate to, begin angling it toward 
     the next cell on the path.
     
+<<<<<<< HEAD
   - Reorientation (`FaceCell`, `ApproachCell`, `FaceHeading`): [Lines 274–323 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L274-L323)
     When the bot recomputes a path to the destination, stop moving forward and turn to face
     the center of the cell.
@@ -210,6 +229,15 @@ Code locations and descriptions
     If the bot is facing the next cell, switch to the `Drive` state for moving to it.
     
   - Driving forward (`Drive`): [Lines 325–364 of `update(msg. model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L325-L364)
+=======
+  - Reorientation (`Orient`): [Lines 253–260 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L253-L260)
+    When the bot recomputes a path to the destination or significantly deviates from
+    the center of the path, stop moving forward and turn to face the next cell.
+    
+    If the bot is facing the next cell, switch to the `Drive` state for moving to it.
+    
+  - Driving forward (`Drive`): [Lines 262–289 of `update(msg. model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L262-L289)
+>>>>>>> b13b515 (done i think)
     If the bot's current heading is way off course, switch to the `Orient` state  
     to reorient it before continuing to follow the path.
     
@@ -222,7 +250,11 @@ Code locations and descriptions
     If the direction is left or right, switch to the `Turn` state for performing
     a turn in said direction.
 
+<<<<<<< HEAD
   - Performing turns (`Turn`): [Lines 291-296 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L358-L364)
+=======
+  - Performing turns (`Turn`): [Lines 291-296 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L291-L296)
+>>>>>>> b13b515 (done i think)
     If the bot is roughly facing the direction it is turning toward, switch to the
     `Drive` state because the turn is over.
     Otherwise, use `err_ang` to angle the bot to face the desired turn direction while 
@@ -253,15 +285,32 @@ Code locations and descriptions
     value (brightness). Return the value and position of the maximum value pixel.
 
 - [`scripts/navigate.py`](scripts/navigate.py)
+<<<<<<< HEAD
   - [Detecting visible lights: Lines 181–196 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L366-L396)
     Call `locate_brightest` to find the value of the brightest pixel in the
     current view of the robot camera. If this value is greater than a set threshold
     for the brightness of a light, transition to the `FaceCell` state in order to
     calculate a new path to the destination and escape the light. If the brightest 
     pixel is under the threshold, assume there is no light in frame and do nothing.
+=======
+  - [Detecting visible lights: Lines 181–196 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L181-L196)
+    Call `locate_brightest` to find the value of the brightest pixel in the
+    current view of the robot camera. If this value is greater than a set threshold
+    for the brightness of a light, transition to the `Request` state in order to
+    calculate a new path to the destination and escape the light. If the brightest 
+    pixel is under the threshold, assume there is no light in frame and do nothing.
+
+  - Evading visible lights: Lines 313-336 of `update(msg, model)`  
+    Compute an error factor between the current direction of the robot and the
+    direction in which to escape from the light. If that error is approximately
+    zero, switch to the `Drive` state to begin the movement away from the light.
+    Otherwise, compute an angular velocity proportional to the error, and spin
+    around with that velocity.
+>>>>>>> b13b515 (done i think)
     
 ### Player Input 
 
+<<<<<<< HEAD
 After testing the above components with stationary lights, we added a second robot which can be operated by the player. The player robot has a light sphere attached to the front of it that cannot be seen from behind. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. The monster robot knows where the player is, but not the direction fo the player's light. So, if the monster robot runs into the player robot's light, it finds the next best path to the player in hopes of catching the player from behind.
 
 Code locations and descriptions
@@ -274,6 +323,71 @@ Code locations and descriptions
     Track the player bot's odometry to determine when it switches cells.
     Upon switching, send a new request from the monster bot to the A*
     algorithm for an updated path the player's new position.
+=======
+A* search is implemented in [`scripts/a_star.py`](scripts/a_star.py).
+
+(Note: we describe the grid squares as "cells" in this document, but they may be referred to as "nodes" in code comments; these terms can be used interchangeably.)
+
+#### Cells 
+
+<img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
+
+We initialize every grid square of the map as a `Cell()`, which has the following attributes. 
+
+- `i`: row index
+
+- `j`: column index
+
+- `parent_i`: parent row index: 
+
+- `parent_j`: parent column index
+
+- `f`: equal to `g + h`; the algorithm processes the cell with the lowest f 
+
+- `g`: number of cells traversed to get from the starting cell to this cell 
+
+- `h`: estimated distance from this cell to the goal cell
+  
+ This information is stored in `cell_details` and is updates as the A* search is performed.
+
+
+ #### e
+  
+  - Set the `starting_position` cell and the `goal` cell
+  
+  - Initialize the map data
+  
+  - Initialize `open_list` and `closed_list` as empty arrays 
+  
+  - `find_path` perform the A* search 
+  
+    - `starting_position` cell is appended to `open_list` 
+    
+    - While the `open_list` is not empty, set `q`  equal cell with the smallest value of of the open list
+
+      - Initilize an array of 4 `successors` with the value -1; these are in the order of north, east, south, and west
+
+      - `check_north` checks if the robot can go north from `q`. If the robot can move in that direction, set the north successor equal to the `Cell` and set `q` as the parent 
+
+      - Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west
+
+      - For every valid successor:
+          
+          - If the successor is equal to `goal`, stop the search 
+    
+          - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`.  
+          
+          - Push 'q' to the closed list 
+    
+  - `trace_path` the final path found by the A* search algorithm and publishes it to TODO
+
+The cell at [2][2] in the image below has a `successor` to its north and its east, as indicated by the blue arrows. 
+The array indices of the cells are in row-major order:
+
+### Player Input 
+
+After testing the above components with stationary lights, we added a second robot which can be be operated by the player. The player robot has a light sphere attached to the front of it. Now, the `goal` cell is always set equal to the player robot's current `cell`. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. If the monster robot runs into the player robot's light
+>>>>>>> b13b515 (done i think)
 
 ## Challenges
 
@@ -328,7 +442,11 @@ up short of the end. However, there could be three times the twists in the road
 ahead. Really consider if you want to continue on that path, and be aware of
 everything left unattended if you do choose to continue.
 
+<<<<<<< HEAD
 - Visualizing the occupancy array relative to our map was a major challenge. When our `check_north` and other wall-checking functions returned the wrong values, it was hard to discern why. Eventually, we had to swap the names of some of the functions in order to match the rotation of occupancy array. If we were to do a similar project in the future, we would write code that visualizes these kinds of functions. Creating an overlay of the map that places a red dot on the edges of cells blocked by walls would have helped us a lot in checking the accuracy the wall-checkers, for example. Having the visual would've saved us the time comparing the printed booleans of the wall-checker to the map.
+=======
+- Visualzing the occupancy array relative to our map was a major challenge. When our `check_north` and other wall-checking functions returned the wrong values, it was hard to discern why. Eventually, we had to swap the names of some of the functions in order to match the rotation of occupancy array. If we were to do a similar project in the future, we would write code that visualizes these kinds of functions. Creating an an overlay of the map that places a red dot on the edges of cells blocked by walls would have helped us a lot in checking the accuracy the wall-checkers, for example. Having the visual would've saved us the time comparing the printed booleans of the wall-checker to the map.
+>>>>>>> b13b515 (done i think)
 
 ## Future Work
 
@@ -338,6 +456,7 @@ The TurtleBot3 teleop package uses a control scheme that varies from typical gam
   
 ## Demo
   
+<<<<<<< HEAD
 Our demo showcaseses a scenario where the autonomous bot attempts to pathfind to the player.
 Upon reaching the corridor in which the player is located, the autonomous bot detects a light
 and immediately begins calculating a new path to the player, turning around to follow that path.
@@ -347,3 +466,8 @@ original path. As the player moves through additional cells, the autonomous bot 
 to its higher speed and turning capabilities, catching the player as they collide with a wall.
 
 `<img src="media/demo.gif" alt="LASER Demo" width="800"/>`
+=======
+TODO describe the demo here: 
+
+<img src="demo(s) go here" alt="occupancy grid" width="800"/>
+>>>>>>> b13b515 (done i think)
