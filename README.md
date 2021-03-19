@@ -199,13 +199,17 @@ Code locations and descriptions
     Once the bot enters the cell it is trying to navigate to, begin angling it toward 
     the next cell on the path.
     
-  - Reorientation (`Orient`): [Lines 253–260 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L253-L260)
-    When the bot recomputes a path to the destination or significantly deviates from
-    the center of the path, stop moving forward and turn to face the next cell.
+  - Reorientation (`FaceCell`, `ApproachCell`, `FaceHeading`): [Lines 274–323 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L274-L323)
+    When the bot recomputes a path to the destination, stop moving forward and turn to face
+    the center of the cell.
+    
+    When the bot is facing the center of its current cell, move forward to reach the center.
+    
+    When the bot is in the center of its current cell, turn to face the next cell.
     
     If the bot is facing the next cell, switch to the `Drive` state for moving to it.
     
-  - Driving forward (`Drive`): [Lines 262–289 of `update(msg. model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L262-L289)
+  - Driving forward (`Drive`): [Lines 325–364 of `update(msg. model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L325-L364)
     If the bot's current heading is way off course, switch to the `Orient` state  
     to reorient it before continuing to follow the path.
     
@@ -218,7 +222,7 @@ Code locations and descriptions
     If the direction is left or right, switch to the `Turn` state for performing
     a turn in said direction.
 
-  - Performing turns (`Turn`): [Lines 291-296 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L291-L296)
+  - Performing turns (`Turn`): [Lines 291-296 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L358-L364)
     If the bot is roughly facing the direction it is turning toward, switch to the
     `Drive` state because the turn is over.
     Otherwise, use `err_ang` to angle the bot to face the desired turn direction while 
@@ -249,19 +253,12 @@ Code locations and descriptions
     value (brightness). Return the value and position of the maximum value pixel.
 
 - [`scripts/navigate.py`](scripts/navigate.py)
-  - [Detecting visible lights: Lines 181–196 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L181-L196)
+  - [Detecting visible lights: Lines 181–196 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L366-L396)
     Call `locate_brightest` to find the value of the brightest pixel in the
     current view of the robot camera. If this value is greater than a set threshold
-    for the brightness of a light, transition to the `Request` state in order to
+    for the brightness of a light, transition to the `FaceCell` state in order to
     calculate a new path to the destination and escape the light. If the brightest 
     pixel is under the threshold, assume there is no light in frame and do nothing.
-
-  - Evading visible lights: Lines 313-336 of `update(msg, model)`  
-    Compute an error factor between the current direction of the robot and the
-    direction in which to escape from the light. If that error is approximately
-    zero, switch to the `Drive` state to begin the movement away from the light.
-    Otherwise, compute an angular velocity proportional to the error, and spin
-    around with that velocity.
     
 ### Player Input 
 
@@ -271,11 +268,12 @@ Code locations and descriptions
 - [`scripts/player.py`](scripts/player.py)
   - Player teleop controls:  
     A modification of the standard Turtlebot3 teleop controls with higher limits on maximum linear and angular velocity and publishers to our monster bot
-    `cmd_vel` topic.
+    `cmd_vel` topic. The `s` key moves the robot backwards and the `x` key stops movement.
 - [`scripts/navigation.py`](scripts/navigate.py)
-  - Query A* when the player changes cells
-    Track the player bot's odometry to determine when it switches cells. Upon switching, send a new request from the monster bot to the A* algorithm for an 
-    updated path the player's new position.
+  - [Query A* when the player changes cells: Lines 219–235 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L219-L235)
+    Track the player bot's odometry to determine when it switches cells.
+    Upon switching, send a new request from the monster bot to the A*
+    algorithm for an updated path the player's new position.
 
 ## Challenges
 
@@ -340,6 +338,12 @@ The TurtleBot3 teleop package uses a control scheme that varies from typical gam
   
 ## Demo
   
-TODO describe the demo here: 
+Our demo showcaseses a scenario where the autonomous bot attempts to pathfind to the player.
+Upon reaching the corridor in which the player is located, the autonomous bot detects a light
+and immediately begins calculating a new path to the player, turning around to follow that path.
+When the player turns around and moves away, the autonomous bot detects a change in the player's
+position and tries to chase it by assuming that the player is facing away and following its
+original path. As the player moves through additional cells, the autonomous bot gains on it due
+to its higher speed and turning capabilities, catching the player as they collide with a wall.
 
-`<img src="demo(s) go here" alt="demo goes here" width="800"/>`
+`<img src="media/demo.gif" alt="LASER Demo" width="800"/>`
