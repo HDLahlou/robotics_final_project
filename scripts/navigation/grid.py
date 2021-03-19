@@ -34,9 +34,9 @@ def current_cell_offset(
     position = pose.position - grid.origin
 
     (length, component, direction) = (
-        (cell_current.row, position.y, sign(cell_next.row - cell_current.row))
-        if cells_horizontally_adjacent(cell_current, cell_next)
-        else (cell_current.col, position.x, sign(cell_next.col - cell_current.col))
+        (cell_current.row, position.x, -sign(cell_next.col - cell_current.col))
+        if cells_adjacent_in_same_row(cell_current, cell_next)
+        else (cell_current.col, position.y, sign(cell_next.row - cell_current.row))
     )
 
     center = (length + 0.5) * grid.len_cell
@@ -62,7 +62,7 @@ def direction_between_cells(first: Cell, second: Cell) -> Vector2:
     """
     Calculate a vector from one cell to another.
     """
-    displacement = Vector2(second.col - first.col, second.row - first.row)
+    displacement = Vector2(second.row - first.row, second.col - first.col)
     return v2.normalize(displacement)
 
 
@@ -77,19 +77,19 @@ def cells_are_adjacent(first: Cell, second: Cell) -> bool:
     """
     Check if two cells are vertically or horizontally adjacent to one another.
     """
-    return cells_vertically_adjacent(first, second) or cells_horizontally_adjacent(
+    return cells_adjacent_in_same_col(first, second) or cells_adjacent_in_same_row(
         first, second
     )
 
 
-def cells_vertically_adjacent(first: Cell, second: Cell) -> bool:
+def cells_adjacent_in_same_col(first: Cell, second: Cell) -> bool:
     """
     Check if two cells are vertically (row-wise) adjacent to one another.
     """
     return abs(first.row - second.row) == 1 and (first.col - second.col == 0)
 
 
-def cells_horizontally_adjacent(first: Cell, second: Cell) -> bool:
+def cells_adjacent_in_same_row(first: Cell, second: Cell) -> bool:
     """
     Check if two cells are horizontally (column-wise) adjacent to one another.
     """
@@ -109,7 +109,7 @@ def locate_position(grid: Grid, pos: Vector2) -> Cell:
     """
     (x, y) = pos - grid.origin
 
-    row = math.floor(y / grid.len_cell)
-    col = math.floor(x / grid.len_cell)
+    row = math.floor(x / grid.len_cell)
+    col = math.floor(y / grid.len_cell)
 
     return Cell(row, col)
