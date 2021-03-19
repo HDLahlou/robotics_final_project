@@ -16,11 +16,42 @@ The main components of our project are A* Search and Sensory Controls, a combina
 
 ## How to Run LASER 
 
-`TODO terminal commands and description`
+1) Clone this repository.
+    ```
+    $ git clone https://github.com/HDLahlou/robotics_final_project.git
+    $ cd robotics_final_project
+    ```
+
+2) Install `pipenv`, which this project uses for local package management.
+    ```
+    $ pip3 install pipenv
+    ```
+
+3) Install the packages used by this project (specified in [`Pipfile`](../Pipfile)).
+    ```
+    $ pipenv install
+    ```
+
+4) Run our ```setup.launch``` file, which must be run from outside the virtual environment.
+    ```
+    $ roslaunch robotics_final_project setup.launch
+
+5) Run our teleop controller.
+    ```
+    $ rosrun robotics_final_project player.py
+    ```
+
+6) Launch a shell in the virtual environment containing the installed packages.
+    ```
+    $ pipenv shell
+    ```
+
+7) Run our ```run.launch``` file to begin the autonomous bot’s algorithm.
+    ```
+    $ roslaunch robotics_final_project run.launch
+    ```
 
 You can teleop the player robot and observe the monster robot's behavior. 
-
-TODO Any necessary package installations?
 
 ## Gazebo Environments
 
@@ -235,6 +266,16 @@ Code locations and descriptions
 ### Player Input 
 
 After testing the above components with stationary lights, we added a second robot which can be operated by the player. The player robot has a light sphere attached to the front of it that cannot be seen from behind. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. The monster robot knows where the player is, but not the direction fo the player's light. So, if the monster robot runs into the player robot's light, it finds the next best path to the player in hopes of catching the player from behind.
+
+Code locations and descriptions
+- [`scripts/player.py`](scripts/player.py)
+  - Player teleop controls:  
+    A modification of the standard Turtlebot3 teleop controls with higher limits on maximum linear and angular velocity and publishers to our monster bot
+    `cmd_vel` topic.
+- [`scripts/navigation.py`](scripts/navigate.py)
+  - Query A* when the player changes cells
+    Track the player bot's odometry to determine when it switches cells. Upon switching, send a new request from the monster bot to the A* algorithm for an 
+    updated path the player's new position.
 
 ## Challenges
 
