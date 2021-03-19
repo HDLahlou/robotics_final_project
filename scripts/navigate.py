@@ -16,6 +16,7 @@ import rospy_util.vector2 as v2
 from controller import Cmd, Controller, Sub, cmd, sub
 from navigation.grid import Cell, Grid
 import navigation.grid as grid
+from robotics_final_project.msg import PathQuery
 from perception import CvBridge, ImageBGR, ImageROS, image, light
 from util import approx_zero, compose, head, lerp_signed
 
@@ -24,7 +25,7 @@ from util import approx_zero, compose, head, lerp_signed
 
 @dataclass
 class Request:
-    blocked: List[Cell]
+    pass
 
 
 @dataclass
@@ -98,6 +99,7 @@ class Model:
     state: State
     path: List[Cell]
     last_cell: Optional[Cell]
+    blocked_cells: List[Cell]
     player_pos: Optional[Vector2]
 
 
@@ -105,9 +107,10 @@ CELL_DEST: Cell = Cell(8, 6)
 
 init_model: Model = Model(
     cv_bridge=CvBridge(),
-    state=Request([]),
+    state=Request(),
     path=[],
     last_cell=None,
+    blocked_cells=[],
     player_pos=None,
 )
 
@@ -195,10 +198,8 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
             if val_max >= LIGHT_VAL_MIN:
                 # Value is sufficiently high; consider the detected object a light
                 # and begin spinning to escape.
-                return (
-                    transition(model, state=Request([next_cell])),
-                    [cmd.stop],
-                )
+                new_model = replace(model, blocked_cells=[next_cell])
+                return (transition(new_model, state=Request()), [cmd.stop])
 
         return (model, cmd.none)
 
@@ -208,8 +209,10 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
             print("Path is invalid!")
             return (model, cmd.none)
 
+        new_state = Orient() if isinstance(model.state, Wait) else model.state
         new_model = replace(model, path=path)
-        return (transition(new_model, state=Orient()), cmd.none)
+
+        return (transition(new_model, state=new_state), cmd.none)
 
     if isinstance(msg, Player):
         return (replace(model, player_pos=msg.position), cmd.none)
@@ -228,13 +231,25 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
         return (
             transition(model, state=Wait("Requesting path...")),
-            [cmd.request_path(current_cell, dest_cell, model.state.blocked)],
+            [cmd.request_path(current_cell, dest_cell, model.blocked_cells)],
         )
 
     if (next_cell := head(model.path)) is None:
         return wait(model, reason="Path is empty")
 
     crossing_cells = current_cell == next_cell
+
+    cmd_query: List[Cmd[PathQuery]] = (
+        [
+            cmd.request_path(
+                current_cell,
+                grid.locate_position(GRID, model.player_pos),
+                model.blocked_cells,
+            )
+        ]
+        if crossing_cells and model.player_pos is not None
+        else []
+    )
 
     # TODO - can precompute headings
     # TODO - do this in drive/turn state; no reassignment
@@ -246,6 +261,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
         #  this is also illegal
         if (next_cell := head(model.path)) is None:
+            # TODO - wait for new path before this check [idk how]
             return wait(model, reason="Path traversed")
 
         print(f"next cell is {next_cell}")
@@ -253,7 +269,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
         heading_new = grid.direction_between_cells(current_cell, next_cell)
 
         if not v2.equals(heading_old, heading_new):
-            return (transition(model, state=Turn()), cmd.none)
+            return (transition(model, state=Turn()), cmd_query)
     else:
         # TODO - not this
         model = replace(model, last_cell=current_cell)
@@ -277,7 +293,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
     if isinstance(model.state, Drive):
         if abs(err_ang) > DRIVE_REORIENT_ERR:
-            return (transition(model, state=Orient()), [cmd.stop])
+            return (transition(model, state=Orient()), [*cmd_query, cmd.stop])
 
         cell_offset = grid.current_cell_offset(
             grid=GRID,
@@ -302,14 +318,14 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
             amount=10.0 * abs(err),
         )
 
-        return (model, [cmd.velocity(angular=vel_ang, linear=vel_lin)])
+        return (model, [*cmd_query, cmd.velocity(angular=vel_ang, linear=vel_lin)])
 
     if approx_zero(err_ang):
-        return (transition(model, state=Drive()), cmd.none)
+        return (transition(model, state=Drive()), cmd_query)
 
     vel_ang = lerp_signed(0, TURN_VEL_ANG, err_ang)
 
-    return (model, [cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
+    return (model, [*cmd_query, cmd.velocity(angular=vel_ang, linear=TURN_VEL_LIN)])
 
 
 def wait(model: Model, reason: str) -> Tuple[Model, List[Cmd[Any]]]:
