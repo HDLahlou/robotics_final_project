@@ -12,7 +12,7 @@ a survival game: the player operates one TurtleBot in a dark maze while another
 cannot stay in the glow of the player's flashlight; thus, the monster bot has to
 be smart in planning its path to the player.
 
-The main components of our project are A* Search, Sensory Controls, and Movement Controls, a combination we've formulated as LASER: the Light A* Search Evasion Routine. The A* Search finds the best path from the monster to the player. The robot uses its Sensory Controls to traverse the maze, center itself in the maze hallways, avoid wall collisions, make smooth turns, and detect light. If the monster runs into the player's light, the A* Search takes this into account and recalculates the new best path to sneak up behind the player.
+The main components of our project are A* Search and Sensory Controls, a combination we've formulated as LASER: the Light A* Search Evasion Routine. The A* Search finds the best path from the monster to the player. The robot uses its Sensory Controls to traverse the maze, center itself in the maze hallways, avoid wall collisions, make smooth turns, and detect light. If the monster runs into the player's light, the A* Search takes this into account and recalculates the new best path to sneak up behind the player.
 
 ## How to Run LASER 
 
@@ -22,59 +22,7 @@ You can teleop the player robot and observe the monster robot's behavior.
 
 TODO Any necessary package installations?
 
-## System Architecture
-
-### A* Search Algorithm 
-
-A* search is implemented in [`scripts/a_star.py`](scripts/a_star.py).
-
-(Note: we describe the grid squares as "cells" in this document, but they may be referred to as "nodes" in the code; these terms can be used interchangeably.)
-
-#### Initialization  
-
-<img src="media/maze_cells.jpg" alt="occupancy grid" width="400"/>
-
-We initialize every grid square of the map as a `Cell()`, which has the following attributes. This information is stored in `cell_details` and is updated as the A* search is performed.
-
-- `i`: row index
-
-- `j`: column index
-
-- `parent_i`: parent row index: 
-
-- `parent_j`: parent column index
-
-- `f`: equal to `g + h`; the algorithm processes the cell with the lowest f 
-
-- `g`: number of cells traversed to get from the starting cell to this cell 
-
-- `h`: estimated distance from this cell to the goal cell
-  
- #### Finding the best path 
-  
-The function `find_path` finds the shortest path from `starting_position` (monster's robot current cell) and `goal` (player's current cell). `open_list` and `closed_list` are intialized as empty arrays; then, `starting_position` is appended to `open_list` 
-    
- While the `open_list` is not empty, set `q` equal to cell with the smallest value of `f` in the `open_list`
-
-- `q` has an array four `successors` in the order of north, east, south, and west. Each successor is intialized as `-1`. 
-
-- `check_north` checks if the robot can go north from `q`. If the robot can move in that direction, set the north succesor of `q` equal to the `Cell` north of of `q`. `q` as the parent Otherwise, the successor remains equal to `-1`. Repeat this process for the other directions with the functions `check_east`,  `check_south`, and `check_west
-
-- For every valid successor:
-          
- - If the successor is equal to `goal`, stop the search 
-    
- - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, and the successor to `open_list` and update `cell_details` with the new value of `f`.  
-          
-          - Push 'q' to the closed list 
-    
-  - `trace_path` the final path found by the A* search algorithm and publishes it to TODO
-
-The cell at [2][2] in the image below has a `successor` to its north and its east, as indicated by the blue arrows. 
-The array indices of the cells are in row-major order:
-
-
-### Gazebo Environments
+## Gazebo Environments
 
 <img src="media/loop.png" alt="loop" width="400"/>
 <img src="media/maze.png" alt="maze" width="400"/>
@@ -88,7 +36,6 @@ maze for testing path-finding and light evasion as involved in our project
 idea. The maps contained in the above files were made in Blender, the looping
 track manually, and the maze using an
 [open-source plugin for maze creation](https://github.com/elfnor/mesh_maze).
-
 
 ### Gazebo Lighting (spoilers: not yet a success, but potentially a future one)
 
@@ -111,6 +58,8 @@ client application. On the server side responsible for simulating robot sensor
 measurements, the light was not present, and thus it did not appear in the robot's
 image feed. Opting to use a placeholder for lights, we put this task aside
 in order to focus on sensory controls and the robot implementation itself.
+
+## System Architecture
 
 ### Message Passing
 
@@ -146,6 +95,52 @@ Code locations and descriptions
   is first initialized or needs to recompute a path, it sends a path request to our
   A* node containing the above information, then waits to receive a calculated path to 
   follow.
+
+### A* Search Algorithm 
+
+A* search is implemented in [`scripts/a_star.py`](scripts/a_star.py).
+
+(Note: we describe the grid squares as "cells" in this document, but they may be referred to as "nodes" in the code; these terms can be used interchangeably.)
+
+#### Initialization  
+
+We initialize every grid square of the map as a `Cell()`, which has the following attributes. This information is stored in `cell_details` and is updated as the A* search is performed.
+
+- `i`: row index
+
+- `j`: column index
+
+- `parent_i`: parent row index: 
+
+- `parent_j`: parent column index
+
+- `f`: equal to `g + h`; the algorithm processes the cell with the lowest f 
+
+- `g`: number of cells traversed to get from the starting cell to this cell 
+
+- `h`: estimated distance from this cell to the goal cell (the Manhattan distance between this cell and the goal) 
+  
+ #### Finding the best path 
+  
+The function `find_path` finds the shortest path from `starting_position` (monster's robot current cell) and `goal` (player's current cell). `open_list` and `closed_list` are intialized as empty arrays; then, `starting_position` is appended to `open_list` 
+    
+ While the `open_list` is not empty, set `q` equal to cell with the smallest value of `f` in the `open_list`
+
+- `q` has an array four `successors` in the order of north, east, south, and west. Each successor is intialized as `-1`. 
+
+- `check_north` checks if the robot can go north from `q`. The cell at `[2][2]` in the grid image has a successor to its north and its east, as indicated by the blue arrows. If the robot is not blocked by a wall, create a temporary cell equal to the `Cell` north of of `q`, and set `q` as its parent. Calculate the temporary cell's value of `g`, `h`, and `f`. Lastly, if this temporary cell is not blocked by light (TODO explanation), set the north succssor of this cell equal to `temp_cell`. Otherwise, the successor remains equal to `-1`.
+
+- Repeat this process for the other directions with the functions `check_east`, `check_south`, and `check_west`. 
+
+- For every valid successor:
+          
+ - If the successor is equal to `goal`, stop the search. 
+    
+ - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, add the successor to `open_list` and update the cell in `cell_details` with the parameters of the successor.  
+          
+ - Push 'q' to the closed list 
+    
+When the search is completed, the function `trace_path` creates a list of best by starting at the `goal` cell in `cell_details` and tracing back through the parents until it reaches `starting_position`. Then, it publishes the path as a `Path.msg`. 
 
 ### Sensory Controls
 
@@ -237,10 +232,9 @@ Code locations and descriptions
     Otherwise, compute an angular velocity proportional to the error, and spin
     around with that velocity.
     
-
 ### Player Input 
 
-After testing the above components with stationary lights, we added a second robot which can be be operated by the player. The player robot has a light sphere attached to the front of it. Now, the `goal` cell is always set equal to the player robot's current `cell`. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. If the monster robot runs into the player robot's light
+After testing the above components with stationary lights, we added a second robot which can be be operated by the player. The player robot has a light sphere attached to the front of it that cannot be seen from behind. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. The monster robot knows where the player is, but not the direction fo the player's light. So, if the monster robot runs into the player robot's light, it finds the next best path to the player in hopes of catching the player from behind.
 
 ## Challenges
 
@@ -265,10 +259,7 @@ application). The work we put it in can perhaps still be salvaged, assuming we
 can spawn corresponding lights on the server side; regardless, the endeavor
 proved a time sink, one for which a good takeaway is in need. Ultimately, we decided to keep the light spheres; instead of sinking more times into experimenting with Gazebo plugins, we wanted to focus on the actual movement and search capabilities of the robot. 
 
-Another major challenge was how to detect which sides of any given node are blocked by a wall when performing the A* search. We first tried to convert an `(x,y)` coordinate into its corresponding index of the OccupancyGrid() data array, `self.map.data`. However, trying to get this calculation proved to be extremely frustrating: `self.map.data` has a different origin than the true origin visualized in RViz. Additionally, the occupancy array is rotated from the map alignment we based the rest of our code off of, and it has to be scaled down with `self.map.info.resolution`. Our solution was to forgo doing these `(x,y)`-to-occupacy-grid conversions. Instead, we rotated `self.map.data` to the match the orientation of the map, and called this rotated version `self.truemap`. 
-The OccupancyGrid() is both rotated 90 degrees and has a different origin than the actual map. 
-
-We replaced the house map in Particle Filter Project with our maze to help us visualize this rotation. The image below shows the the `self.map.data` after we rotated it 90 degrees clockwise and scaled it down. (The origin doesn't match, but now that we are not using `(x,y)` values, it doesn't matter; this is just for ease of visualization). 
+Another major challenge was how to detect which sides of any given node are blocked by a wall when performing the A* search. We first tried to convert an `(x,y)` coordinate into its corresponding index of the OccupancyGrid() data array, `self.map.data`. However, trying to get this calculation proved to be extremely frustrating: `self.map.data` has a different origin than the true origin visualized in RViz. Additionally, the occupancy array is rotated from the map alignment we based the rest of our code off of, and it has to be scaled down with `self.map.info.resolution`. Our solution was to forgo doing these `(x,y)`-to-occupacy-grid conversions. Instead, we rotated `self.map.data` to the match the orientation of the map, and called this rotated version `self.truemap`. We replaced the house map in Particle Filter Project with our maze to help us visualize this rotation. The image below shows the the `self.map.data` after we rotated it 90 degrees clockwise and scaled it down. (The origin doesn't match, but now that we are not using `(x,y)` values, it doesn't matter; this is just for ease of visualization). 
 
 <img src="media/occupancy.png" alt="occupancy grid" width="400"/>
 
@@ -276,7 +267,7 @@ We use `self.map.info.resolution` to calculate how many indexes of the `self.tru
 
 ## Takeaways
 
-Following the above dilemma with Gazebo, I believe my main takeaway for this
+- Following the above dilemma with Gazebo, I believe my main takeaway for this
 project would be: know that you can't know what you're getting yourself into. I
 realize my wording is a bit repetitive, though I'm going for a play on "know
 what you're getting yourself into." That suggestion comes from a place of good
@@ -310,4 +301,4 @@ The TurtleBot3 teleop package uses a control scheme that varies from typical gam
   
 TODO describe the demo here: 
 
-<img src="demo(s) go here" alt="occupancy grid" width="800"/>
+`<img src="demo(s) go here" alt="demo goes here" width="800"/>`
