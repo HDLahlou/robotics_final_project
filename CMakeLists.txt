@@ -52,6 +52,7 @@ add_message_files(
   FILES
   Cell.msg
   Path.msg
+  PathQuery.msg
 )
 
 ## Generate services in the 'srv' folder
