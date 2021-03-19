@@ -122,13 +122,13 @@ We initialize every grid square of the map as a `Cell()`, which has the followin
   
  #### Finding the best path 
   
-The function `find_path` finds the shortest path from `starting_position` (monster's robot current cell) and `goal` (player's current cell). `open_list` and `closed_list` are intialized as empty arrays; then, `starting_position` is appended to `open_list` 
+The function `find_path` finds the shortest path from `starting_position` (monster's robot current cell) and `goal` (player's current cell). `open_list` and `closed_list` are  initialized as empty arrays; then, `starting_position` is appended to `open_list` 
     
  While the `open_list` is not empty, set `q` equal to cell with the smallest value of `f` in the `open_list`
 
-- `q` has an array four `successors` in the order of north, east, south, and west. Each successor is intialized as `-1`. 
+- `q` has an array of four `successors` in the order of north, east, south, and west. Each successor is initialized as `-1`. 
 
-- `check_north` checks if the robot can go north from `q`. The cell at `[2][2]` in the grid image has a successor to its north and its east, as indicated by the blue arrows. If the robot is not blocked by a wall, create a temporary cell equal to the `Cell` north of of `q`, and set `q` as its parent. Calculate the temporary cell's value of `g`, `h`, and `f`. Lastly, if this temporary cell is not blocked by light, we set the north succssor of this cell equal to `temp_cell`. We determine this by looking at the provided values in `blocked_by_light` and seeing if it any of the entries within the list match the currently observed cell. Otherwise, the successor remains equal to `-1`.
+- `check_north` checks if the robot can go north from `q`. The cell at `[2][2]` in the grid image has a successor to its north and its east, as indicated by the blue arrows. If the robot is not blocked by a wall, create a temporary cell equal to the `Cell` north of of `q`, and set `q` as its parent. Calculate the temporary cell's value of `g`, `h`, and `f`. Lastly, if this temporary cell is not blocked by light, we set the north successor of this cell equal to `temp_cell`. We determine this by looking at the provided values in `blocked_by_light` and seeing if it any of the entries within the list match the currently observed cell. Otherwise, the successor remains equal to `-1`.
 
 - Repeat this process for the other directions with the functions `check_east`, `check_south`, and `check_west`. 
 
@@ -136,7 +136,7 @@ The function `find_path` finds the shortest path from `starting_position` (monst
           
  - If the successor is equal to `goal`, stop the search. 
     
- - If the successor has a lower value of `f` than the the current `f` of the equivalent cell in `cell_details`, add the successor to `open_list` and update the cell in `cell_details` with the parameters of the successor.  
+ - If the successor has a lower value of `f` than the current `f` of the equivalent cell in `cell_details`, add the successor to `open_list` and update the cell in `cell_details` with the parameters of the successor.  
           
  - Push 'q' to the closed list 
     
@@ -212,7 +212,7 @@ Code locations and descriptions
 - [`scripts/perception/light.py`](scripts/perception/light.py)
   - Detecting visible lights: `locate_brightest(img)`  
     Receive an image in BGR format. Pre-process the image by 1) converting it
-    to grayscale and 2) applying Guassian blur to smooth away high-value noise.
+    to grayscale and 2) applying Gaussian blur to smooth away high-value noise.
     Provide the pre-processed image to `cv2.minMaxLoc`, which returns the
     values and positions of the pixels in the image with minimum and maximum
     value (brightness). Return the value and position of the maximum value pixel.
@@ -234,7 +234,7 @@ Code locations and descriptions
     
 ### Player Input 
 
-After testing the above components with stationary lights, we added a second robot which can be be operated by the player. The player robot has a light sphere attached to the front of it that cannot be seen from behind. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. The monster robot knows where the player is, but not the direction fo the player's light. So, if the monster robot runs into the player robot's light, it finds the next best path to the player in hopes of catching the player from behind.
+After testing the above components with stationary lights, we added a second robot which can be operated by the player. The player robot has a light sphere attached to the front of it that cannot be seen from behind. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. The monster robot knows where the player is, but not the direction fo the player's light. So, if the monster robot runs into the player robot's light, it finds the next best path to the player in hopes of catching the player from behind.
 
 ## Challenges
 
@@ -259,11 +259,11 @@ application). The work we put it in can perhaps still be salvaged, assuming we
 can spawn corresponding lights on the server side; regardless, the endeavor
 proved a time sink, one for which a good takeaway is in need. Ultimately, we decided to keep the light spheres; instead of sinking more times into experimenting with Gazebo plugins, we wanted to focus on the actual movement and search capabilities of the robot. 
 
-Another major challenge was how to detect which sides of any given node are blocked by a wall when performing the A* search. We first tried to convert an `(x,y)` coordinate into its corresponding index of the OccupancyGrid() data array, `self.map.data`. However, trying to get this calculation proved to be extremely frustrating: `self.map.data` has a different origin than the true origin visualized in RViz. Additionally, the occupancy array is rotated from the map alignment we based the rest of our code off of, and it has to be scaled down with `self.map.info.resolution`. Our solution was to forgo doing these `(x,y)`-to-occupacy-grid conversions. Instead, we rotated `self.map.data` to the match the orientation of the map, and called this rotated version `self.truemap`. We replaced the house map in Particle Filter Project with our maze to help us visualize this rotation. The image below shows the the `self.map.data` after we rotated it 90 degrees clockwise and scaled it down. (The origin doesn't match, but now that we are not using `(x,y)` values, it doesn't matter; this is just for ease of visualization). 
+Another major challenge was how to detect which sides of any given node are blocked by a wall when performing the A* search. We first tried to convert an `(x,y)` coordinate into its corresponding index of the OccupancyGrid() data array, `self.map.data`. However, trying to get this calculation proved to be extremely frustrating: `self.map.data` has a different origin than the true origin visualized in RViz. Additionally, the occupancy array is rotated from the map alignment we based the rest of our code off of, and it has to be scaled down with `self.map.info.resolution`. Our solution was to forgo doing these `(x,y)`-to-occupacy-grid conversions. Instead, we rotated `self.map.data` to match the orientation of the map, and called this rotated version `self.truemap`. We replaced the house map in the Particle Filter Project with our maze to help us visualize this rotation. The image below shows the `self.map.data` after we rotated it 90 degrees clockwise and scaled it down. (The origin doesn't match, but now that we are not using `(x,y)` values, it doesn't matter; this is just for ease of visualization). 
 
 <img src="media/occupancy.png" alt="occupancy grid" width="400"/>
 
-We use `self.map.info.resolution` to calculate how many indexes of the `self.truemap` array is equal to the length of a single grid square, `self.gridsize`. The function `node_to_occ` is basically a modified 2D-array-indicies to 1d-array-index function. It takes the array indices `[i][j]` of a given maze cell and calculates the the corresponding index in `self.truemap` with `self.gridsize`. Then, we were finally able to correctly identify which edges of a given maze cell are blocked by walls.  
+We use `self.map.info.resolution` to calculate how many indexes of the `self.truemap` array is equal to the length of a single grid square, `self.gridsize`. The function `node_to_occ` is basically a modified  2D-array-indices to 1d-array-index function. It takes the array indices `[i][j]` of a given maze cell and calculates the corresponding index in `self.truemap` with `self.gridsize`. Then, we were finally able to correctly identify which edges of a given maze cell are blocked by walls.  
 
 ## Takeaways
 
@@ -289,7 +289,7 @@ up short of the end. However, there could be three times the twists in the road
 ahead. Really consider if you want to continue on that path, and be aware of
 everything left unattended if you do choose to continue.
 
-- Visualzing the occupancy array relative to our map was a major challenge. When our `check_north` and other wall-checking functions returned the wrong values, it was hard to discern why. Eventually, we had to swap the names of some of the functions in order to match the rotation of occupancy array. If we were to do a similar project in the future, we would write code that visualizes these kinds of functions. Creating an an overlay of the map that places a red dot on the edges of cells blocked by walls would have helped us a lot in checking the accuracy the wall-checkers, for example. Having the visual would've saved us the time comparing the printed booleans of the wall-checker to the map.
+- Visualizing the occupancy array relative to our map was a major challenge. When our `check_north` and other wall-checking functions returned the wrong values, it was hard to discern why. Eventually, we had to swap the names of some of the functions in order to match the rotation of occupancy array. If we were to do a similar project in the future, we would write code that visualizes these kinds of functions. Creating an overlay of the map that places a red dot on the edges of cells blocked by walls would have helped us a lot in checking the accuracy the wall-checkers, for example. Having the visual would've saved us the time comparing the printed booleans of the wall-checker to the map.
 
 ## Future Work
 
