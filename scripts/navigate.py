@@ -24,7 +24,6 @@ from util import approx_zero, compose, head, lerp_signed
 
 @dataclass
 class Request:
-    dest: Cell
     blocked: List[Cell]
 
 
@@ -99,15 +98,17 @@ class Model:
     state: State
     path: List[Cell]
     last_cell: Optional[Cell]
+    player_pos: Optional[Vector2]
 
 
 CELL_DEST: Cell = Cell(8, 6)
 
 init_model: Model = Model(
     cv_bridge=CvBridge(),
-    state=Request(CELL_DEST, []),
+    state=Request([]),
     path=[],
     last_cell=None,
+    player_pos=None,
 )
 
 init: Tuple[Model, List[Cmd[Any]]] = (init_model, cmd.none)
@@ -143,8 +144,14 @@ class Image:
     image: ImageBGR
 
 
+@dataclass
+class Player:
+    position: Vector2
+
+
 Msg = Union[
     Odom,
+    Player,
     Directions,
     Image,
 ]
@@ -169,7 +176,7 @@ GRID: Grid = Grid(
     origin=GRID_ORIGIN,
 )
 
-LIGHT_VAL_MIN: float = 200
+LIGHT_VAL_MIN: float = 50
 
 
 def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
@@ -189,7 +196,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
                 # Value is sufficiently high; consider the detected object a light
                 # and begin spinning to escape.
                 return (
-                    transition(model, state=Request(CELL_DEST, [next_cell])),
+                    transition(model, state=Request([next_cell])),
                     [cmd.stop],
                 )
 
@@ -204,15 +211,24 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
         new_model = replace(model, path=path)
         return (transition(new_model, state=Orient()), cmd.none)
 
+    if isinstance(msg, Player):
+        return (replace(model, player_pos=msg.position), cmd.none)
+
     if isinstance(model.state, Wait):
         return (model, [cmd.stop])
 
     current_cell = grid.locate_pose(GRID, msg.pose)
 
     if isinstance(model.state, Request):
+        if model.player_pos is None:
+            print("Awaiting player position...")
+            return (model, cmd.none)
+
+        dest_cell = grid.locate_position(GRID, model.player_pos)
+
         return (
             transition(model, state=Wait("Requesting path...")),
-            [cmd.request_path(current_cell, model.state.dest, model.state.blocked)],
+            [cmd.request_path(current_cell, dest_cell, model.state.blocked)],
         )
 
     if (next_cell := head(model.path)) is None:
@@ -326,9 +342,10 @@ def subscriptions(model: Model) -> List[Sub[Any, Msg]]:
     Subscriptions from which to receive messages.
     """
     return [
-        sub.odometry(Odom),
+        sub.odometry("hunter", Odom),
         sub.directions(Directions),
         sub.image_sensor(to_image_cv2(model.cv_bridge)),
+        sub.odometry("player", lambda p: Player(p.position)),
     ]
 
 
