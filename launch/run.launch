@@ -1,0 +1,8 @@
+<launch>
+  <node name="laser_a_star" pkg="robotics_final_project" type="a_star.py"
+    output="screen"/>
+
+  <node name="laser_navigate" pkg="robotics_final_project" type="navigate.py"
+    output="screen"/>
+
+</launch>
