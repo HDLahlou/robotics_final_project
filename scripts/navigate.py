@@ -15,6 +15,7 @@ import rospy_util.vector2 as v2
 from controller import Cmd, Controller, Sub, cmd, sub
 from navigation.grid import Cell, Grid
 import navigation.grid as grid
+from robotics_final_project.msg import Path
 from util import approx_zero, head, lerp_signed
 
 ### Model ###
@@ -87,7 +88,7 @@ class Odom:
     pose: TurtlePose
 
 
-Msg = Union[Odom]
+Msg = Union[Odom, Path]
 
 
 ### Update ###
@@ -112,6 +113,9 @@ GRID: Grid = Grid(
 def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
     if isinstance(model.state, Wait):
         return (model, [cmd.stop])
+
+    if isinstance(msg, Path):
+        return replace(model, path=msg.path)
 
     if (next_cell := head(model.path)) is None:
         return wait(model, reason="Path is empty")
