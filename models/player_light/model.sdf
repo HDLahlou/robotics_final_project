@@ -3,7 +3,7 @@
   <model name='player_light'>
     <include>
       <uri>model://orb</uri>
-      <pose>0.07 0 0.1 0 0 0</pose>
+      <pose>0.03 0 0.14 0 0 0</pose>
     </include>
 
     <include>
