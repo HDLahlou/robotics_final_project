@@ -346,4 +346,4 @@ position and tries to chase it by assuming that the player is facing away and fo
 original path. As the player moves through additional cells, the autonomous bot gains on it due
 to its higher speed and turning capabilities, catching the player as they collide with a wall.
 
-`<img src="media/demo.gif" alt="LASER Demo" width="800"/>`
+<img src="media/demo.gif" alt="LASER Demo" width="800"/>
