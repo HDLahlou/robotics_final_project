@@ -58,19 +58,31 @@ def next_cell_direction(
     return v2.signed_angle_between(v2.from_angle(pose.yaw), dir_absolute)
 
 
-def direction_between_cells(first: Cell, second: Cell) -> Vector2:
+def displacement_between_cells(first: Cell, second: Cell) -> Vector2:
     """
     Calculate a vector from one cell to another.
     """
-    displacement = Vector2(second.row - first.row, second.col - first.col)
-    return v2.normalize(displacement)
+    return Vector2(second.row - first.row, second.col - first.col)
 
 
-def path_is_valid(path: List[Cell]) -> bool:
+def direction_between_cells(first: Cell, second: Cell) -> Vector2:
+    """
+    Calculate a unit vector from one cell to another.
+    """
+    return v2.normalize(displacement_between_cells(first, second))
+
+
+def validate_path(path: List[Cell]) -> List[Vector2]:
     """
     Check a list of cells to see if they form a traversable path.
     """
-    return all([cells_are_adjacent(*z) for z in zip(path[:-1], path[1:])])
+    displacements = [displacement_between_cells(*z) for z in zip(path[:-1], path[1:])]
+
+    valid: List[Vector2] = (
+        [] if any([v2.magnitude(d) != 1 for d in displacements]) else displacements
+    )
+
+    return valid
 
 
 def cells_are_adjacent(first: Cell, second: Cell) -> bool:
@@ -96,6 +108,14 @@ def cells_adjacent_in_same_row(first: Cell, second: Cell) -> bool:
     return abs(first.col - second.col) == 1 and (first.row - second.row == 0)
 
 
+def locate_cell(grid: Grid, cell: Cell) -> Vector2:
+    """"""
+    cx = (cell.row + 0.5) * grid.len_cell
+    cy = (cell.col + 0.5) * grid.len_cell
+
+    return Vector2(cx, cy) + grid.origin
+
+
 def locate_pose(grid: Grid, pose: TurtlePose) -> Cell:
     """
     Map the robot's current pose to a cell in a grid.
@@ -113,3 +133,19 @@ def locate_position(grid: Grid, pos: Vector2) -> Cell:
     col = math.floor(y / grid.len_cell)
 
     return Cell(row, col)
+
+
+def direction_to_string(dir: Vector2) -> str:
+    """
+    Convert a 2D vector representing a cardinal direction to a string.
+    """
+    if v2.equals(Vector2(1, 0), dir):
+        return "south"
+    if v2.equals(Vector2(0, 1), dir):
+        return "east"
+    if v2.equals(Vector2(-1, 0), dir):
+        return "north"
+    if v2.equals(Vector2(0, -1), dir):
+        return "west"
+
+    return "invalid"
