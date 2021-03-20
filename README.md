@@ -114,6 +114,7 @@ and for the A* node to send that path back to the navigation node.
 
 Code locations and descriptions
 - [`msgs/Cell.msg`](msg/Cell.msg)
+
   Our maze map is spatially indexed into a 13x13 grid of cells, each of which we can
   reference using row and column identifiers. We internally use the bot's current cell
   in all of our path-related algorithms to simplify our map space and lower the amount 
@@ -123,6 +124,7 @@ Code locations and descriptions
 
 Code locations and descriptions
 - [`msgs/Path.msg`](msg/Path.msg)
+
   A path is defined as a list of adjacent cells in the map. The A* algorithm will
   calculate the shortest path (fewest number of cells traversed) from a starting
   cell to a destination cell.
@@ -131,6 +133,7 @@ Code locations and descriptions
 
 Code locations and descriptions
 - [`msgs/PathRequest.msg`](msg/PathRequest.msg)
+
   Our navigation module has no map knowledge and can only determine its current cell,
   its destination cell, and cells that are obstructed due to light. When the robot
   is first initialized or needs to recompute a path, it sends a path request to our
@@ -207,12 +210,14 @@ our robot in the middle of each cell upon beginning path navigation.
 Code locations and descriptions
 - [`scripts/navigate.py`](scripts/navigate.py)
   - Proportional control: [Lines 221–251 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L221-L251)
+  
     Use odometry offsets to calculate a proportional control angular velocity 
     (`err_ang`) for the bot to face the next cell on the path it is following.
     Once the bot enters the cell it is trying to navigate to, begin angling it toward 
     the next cell on the path.
     
   - Reorientation (`FaceCell`, `ApproachCell`, `FaceHeading`): [Lines 274–323 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L274-L323)
+  
     When the bot recomputes a path to the destination, stop moving forward and turn to face
     the center of the cell.
     
@@ -223,6 +228,7 @@ Code locations and descriptions
     If the bot is facing the next cell, switch to the `Drive` state for moving to it.
     
   - Driving forward (`Drive`): [Lines 325–364 of `update(msg. model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L325-L364)
+  
     If the bot's current heading is way off course, switch to the `Orient` state  
     to reorient it before continuing to follow the path.
     
@@ -236,6 +242,7 @@ Code locations and descriptions
     a turn in said direction.
 
   - Performing turns (`Turn`): [Lines 291-296 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L358-L364)
+  
     If the bot is roughly facing the direction it is turning toward, switch to the
     `Drive` state because the turn is over.
     Otherwise, use `err_ang` to angle the bot to face the desired turn direction while 
@@ -264,6 +271,7 @@ unable to find a valid path.
 Code locations and descriptions
 - [`scripts/perception/light.py`](scripts/perception/light.py)
   - Detecting visible lights: `locate_brightest(img)`  
+  
     Receive an image in BGR format. Pre-process the image by 1) converting it
     to grayscale and 2) applying Gaussian blur to smooth away high-value noise.
     Provide the pre-processed image to `cv2.minMaxLoc`, which returns the
@@ -272,6 +280,7 @@ Code locations and descriptions
 
 - [`scripts/navigate.py`](scripts/navigate.py)
   - [Detecting visible lights: Lines 181–196 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L366-L396)
+  
     Call `locate_brightest` to find the value of the brightest pixel in the
     current view of the robot camera. If this value is greater than a set threshold
     for the brightness of a light, transition to the `FaceCell` state in order to
@@ -285,10 +294,12 @@ After testing the above components with stationary lights, we added a second rob
 Code locations and descriptions
 - [`scripts/player.py`](scripts/player.py)
   - Player teleop controls:  
+  
     A modification of the standard Turtlebot3 teleop controls with higher limits on maximum linear and angular velocity and publishers to our monster bot
     `cmd_vel` topic. The `s` key moves the robot backwards and the `x` key stops movement.
 - [`scripts/navigation.py`](scripts/navigate.py)
   - [Query A* when the player changes cells: Lines 219–235 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L219-L235)
+  
     Track the player bot's odometry to determine when it switches cells.
     Upon switching, send a new request from the monster bot to the A*
     algorithm for an updated path the player's new position.
