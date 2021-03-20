@@ -27,7 +27,7 @@ The main components of our project are A* Search and Sensory Controls, a combina
     $ pip3 install pipenv
     ```
 
-3) Install the packages used by this project (specified in [`Pipfile`](../Pipfile)).
+3) Install the packages used by this project (specified in [`Pipfile`](Pipfile)).
     ```
     $ pipenv install
     ```
@@ -75,7 +75,7 @@ idea. The maps contained in the above files were made in Blender, the looping
 track manually, and the maze using an
 [open-source plugin for maze creation](https://github.com/elfnor/mesh_maze).
 
-### Gazebo Lighting (spoilers: not yet a success, but potentially a future one)
+### Gazebo Lighting
 
 <img src="media/spotlight-no-shadow.gif" alt="spotlight no shadow" width="400"/>
 <img src="media/spotlight-shadow.gif" alt="spotlight shadow" width="400"/>
@@ -97,6 +97,9 @@ measurements, the light was not present, and thus it did not appear in the robot
 image feed. Opting to use a placeholder for lights, we put this task aside
 in order to focus on sensory controls and the robot implementation itself.
 
+In our final implementation, we were unable to incorporate this lighting
+mechanism and ended up using emissive spheres as a simple replacement.
+
 ## System Architecture
 
 ### Message Passing
@@ -110,7 +113,7 @@ and for the A* node to send that path back to the navigation node.
 #### Grid-Based Spatial Indexing
 
 Code locations and descriptions
-- [`msgs/Cell.msg`](scripts/Cell.msg)
+- [`msgs/Cell.msg`](msg/Cell.msg)
   Our maze map is spatially indexed into a 13x13 grid of cells, each of which we can
   reference using row and column identifiers. We internally use the bot's current cell
   in all of our path-related algorithms to simplify our map space and lower the amount 
@@ -119,7 +122,7 @@ Code locations and descriptions
 #### Paths
 
 Code locations and descriptions
-- [`msgs/Path.msg`](scripts/Path.msg)
+- [`msgs/Path.msg`](msg/Path.msg)
   A path is defined as a list of adjacent cells in the map. The A* algorithm will
   calculate the shortest path (fewest number of cells traversed) from a starting
   cell to a destination cell.
@@ -127,7 +130,7 @@ Code locations and descriptions
 #### Path Requesting
 
 Code locations and descriptions
-- [`msgs/PathRequest.msg`](scripts/PathRequest.msg)
+- [`msgs/PathRequest.msg`](msg/PathRequest.msg)
   Our navigation module has no map knowledge and can only determine its current cell,
   its destination cell, and cells that are obstructed due to light. When the robot
   is first initialized or needs to recompute a path, it sends a path request to our
@@ -197,6 +200,9 @@ between the two walls of the pathway, and performing turns when the path changes
 directions. The controls aim to perform these tasks while still allowing the bot
 to move decently quickly (in the above demonstrations, TurtleBot3 moves at 0.6 m/s).
 In our current implementation, the bot uses odometry to follow a path calculated by the A* algorithm to reach a destination.
+This is a complete reworking of our previous attempt at sensory control using laser scans;
+the robot now has no knowledge of the walls around it, meaning that we also have to center
+our robot in the middle of each cell upon beginning path navigation.
 
 Code locations and descriptions
 - [`scripts/navigate.py`](scripts/navigate.py)
@@ -318,7 +324,7 @@ We use `self.map.info.resolution` to calculate how many indexes of the `self.tru
 
 ## Takeaways
 
-- Following the above dilemma with Gazebo, I believe my main takeaway for this
+- (Adam) Following the above dilemma with Gazebo, I believe my main takeaway for this
 project would be: know that you can't know what you're getting yourself into. I
 realize my wording is a bit repetitive, though I'm going for a play on "know
 what you're getting yourself into." That suggestion comes from a place of good
@@ -341,6 +347,8 @@ ahead. Really consider if you want to continue on that path, and be aware of
 everything left unattended if you do choose to continue.
 
 - Visualizing the occupancy array relative to our map was a major challenge. When our `check_north` and other wall-checking functions returned the wrong values, it was hard to discern why. Eventually, we had to swap the names of some of the functions in order to match the rotation of occupancy array. If we were to do a similar project in the future, we would write code that visualizes these kinds of functions. Creating an overlay of the map that places a red dot on the edges of cells blocked by walls would have helped us a lot in checking the accuracy the wall-checkers, for example. Having the visual would've saved us the time comparing the printed booleans of the wall-checker to the map.
+
+- 
 
 ## Future Work
 
