@@ -251,7 +251,7 @@ def update(msg: Msg, model: Model) -> Tuple[Model, List[Cmd[Any]]]:
 
         if len(path) < 2:
             # If the bot has finished traversing the path, stop
-            return wait(model, reason="Reached end of path", path=[])
+            return wait(model, reason="Reached end of path")
 
         next_cell = path[1]
 
@@ -402,7 +402,7 @@ def wait(model: Model, reason: str, **kwargs: Any) -> Tuple[Model, List[Cmd[Any]
     """
     Transition the bot to a wait state.
     """
-    return (transition(model, state=Wait(reason), **kwargs), cmd.none)
+    return (transition(model, state=Wait(reason), path=[], **kwargs), cmd.none)
 
 
 def transition(model: Model, state: State, **kwargs: Any) -> Model:
