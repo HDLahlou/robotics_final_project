@@ -43,21 +43,18 @@ The main components of our project are A* Search and Sensory Controls, a combina
     $ roslaunch robotics_final_project setup.launch
     ```
 
-6) Return to the project directory and launch a shell in the virtual environment containing the installed packages.
+6) Open a new terminal, return to the project directory, launch a shell in the virtual environment containing the installed packages, and run our teleop controller.
     ```
     $ cd src/robotics_final_project
     $ pipenv shell
-    ```
-    
-7) Run our teleop controller.
-    ```
     $ rosrun robotics_final_project player.py
     ```
 
-8) Unpause time in Gazebo.
+7) Unpause time in Gazebo.
 
-9) Run our ```run.launch``` file to begin the autonomous bot’s algorithm.
+8) Open a new terminal, launch a shell in the virtual environment again, and run our ```run.launch``` file to begin the autonomous bot’s algorithm.
     ```
+    # pipenv shell
     $ roslaunch robotics_final_project run.launch
     ```
 
