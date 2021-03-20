@@ -293,13 +293,13 @@ Code locations and descriptions
   - Player teleop controls:  
   
     A modification of the standard Turtlebot3 teleop controls with higher limits on maximum linear and angular velocity and publishers to our monster bot
-    `cmd_vel` topic. The `s` key moves the robot backwards and the `x` key stops movement.
-- [`scripts/navigation.py`](scripts/navigate.py)
+    `cmd_vel` topic. The `s` key moves the robot backwards and the `x` and space keys stop movement.
+- [`scripts/navigate.py`](scripts/navigate.py)
   - [Query A* when the player changes cells: Lines 219–235 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/main/scripts/navigate.py#L219-L235)
   
     Track the player bot's odometry to determine when it switches cells.
     Upon switching, send a new request from the monster bot to the A*
-    algorithm for an updated path the player's new position.
+    algorithm for an updated path to the player's new position.
 
 ## Challenges
 
