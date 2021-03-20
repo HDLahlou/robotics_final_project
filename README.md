@@ -218,8 +218,8 @@ Code locations and descriptions
     
   - Reorientation (`FaceCell`, `ApproachCell`, `FaceHeading`): [Lines 274–323 of `update(msg, model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L274-L323)
   
-    When the bot recomputes a path to the destination, stop moving forward and turn to face
-    the center of the cell.
+    When the bot recomputes a path to the destination that goes in a different direction from the previous one,
+    stop moving forward and turn to face the center of the cell.
     
     When the bot is facing the center of its current cell, move forward to reach the center.
     
