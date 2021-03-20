@@ -182,9 +182,9 @@ The function `find_path` finds the shortest path from `starting_position` (monst
     
  - If the successor has a lower value of `f` than the current `f` of the equivalent cell in `cell_details`, add the successor to `open_list` and update the cell in `cell_details` with the parameters of the successor.  
           
- - Push 'q' to the closed list 
+ - Push `q` to the closed list 
     
-When the search is completed, the function `trace_path` creates a list of best by starting at the `goal` cell in `cell_details` and tracing back through the parents until it reaches `starting_position`. Then, it publishes the path as a `Path.msg`. 
+When the search is completed, the function `trace_path` creates a list of best cells by starting at the `goal` cell in `cell_details` and tracing back through the parents until it reaches `starting_position`. Then, it publishes the path as a `Path.msg`. 
 
 ### Sensory Controls
 
