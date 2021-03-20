@@ -229,7 +229,7 @@ Code locations and descriptions
     
   - Driving forward (`Drive`): [Lines 325–364 of `update(msg. model)`](https://github.com/HDLahlou/robotics_final_project/blob/player-bot/scripts/navigate.py#L325-L364)
   
-    If the bot's current heading is way off course, switch to the `Orient` state  
+    If the bot's current heading is way off course, switch to the `FaceCell` state  
     to reorient it before continuing to follow the path.
     
     If the bot's heading is roughly in the same direction the next cell in the path
