@@ -250,8 +250,7 @@ Code locations and descriptions
 
 #### Simple Light Evasion
 
-Due to aforementioned difficulty with Gazebo (and the reduced time frame of my
-portion of the project), we are currently using emissive spheres as substitutes
+Due to aforementioned difficulty with Gazebo, we are currently using emissive spheres as substitutes
 for spotlights. While appearing bright, these do not cast light on other
 objects. We thus leave robot inference (e.g. determining the presence of a light
 around a corner via detection of diffused light) for later stages of the
