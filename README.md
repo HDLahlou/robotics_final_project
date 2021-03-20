@@ -286,7 +286,7 @@ Code locations and descriptions
     
 ### Player Input 
 
-After testing the above components with stationary lights, we added a second robot which can be operated by the player. The player robot has a light sphere attached to the front of it that cannot be seen from behind. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. The monster robot knows where the player is, but not the direction fo the player's light. So, if the monster robot runs into the player robot's light, it finds the next best path to the player in hopes of catching the player from behind.
+After testing the above components with stationary lights, we added a second robot which can be operated by the player. The player robot has a light sphere attached to the front of it that cannot be seen from behind. Because the A* search is very fast, the monster robot can quickly find new best paths as the player moves. The monster robot knows where the player is, but not the direction of the player's light. So, if the monster robot runs into the player robot's light, it finds the next best path to the player in hopes of catching the player from behind.
 
 Code locations and descriptions
 - [`scripts/player.py`](scripts/player.py)
