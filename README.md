@@ -252,9 +252,7 @@ Code locations and descriptions
 
 Due to aforementioned difficulty with Gazebo, we are currently using emissive spheres as substitutes
 for spotlights. While appearing bright, these do not cast light on other
-objects. We thus leave robot inference (e.g. determining the presence of a light
-around a corner via detection of diffused light) for later stages of the
-project. Although a simpler task, the current setup provides a good environment
+objects. Although a simpler task, the current setup provides a good environment
 for unit testing the evasion of visible light sources. This evasion is
 demonstrated, along with movement controls, in the second recording: TurtleBot
 navigates the maze, quickly turning and retreating upon encountering two glowing
