@@ -320,9 +320,8 @@ robot camera feed in RViz, we realized that the lights were not visible to the
 robot. Cue more Googling, and we then learned that robot sensor measurements are
 handled on Gazebo's server application, and we were almost definitely spawning
 our lights only on the client side (where they were visible to us using the
-application). The work we put it in can perhaps still be salvaged, assuming we
-can spawn corresponding lights on the server side; regardless, the endeavor
-proved a time sink, one for which a good takeaway is in need. Ultimately, we decided to keep the light spheres; instead of sinking more times into experimenting with Gazebo plugins, we wanted to focus on the actual movement and search capabilities of the robot. 
+application). The endeavor proved a time sink, one for which a good takeaway is in need.
+Ultimately, we decided to keep the light spheres; instead of sinking more times into experimenting with Gazebo plugins, we wanted to focus on the actual movement and search capabilities of the robot. 
 
 Another major challenge was how to detect which sides of any given node are blocked by a wall when performing the A* search. We first tried to convert an `(x,y)` coordinate into its corresponding index of the OccupancyGrid() data array, `self.map.data`. However, trying to get this calculation proved to be extremely frustrating: `self.map.data` has a different origin than the true origin visualized in RViz. Additionally, the occupancy array is rotated from the map alignment we based the rest of our code off of, and it has to be scaled down with `self.map.info.resolution`. Our solution was to forgo doing these `(x,y)`-to-occupacy-grid conversions. Instead, we rotated `self.map.data` to match the orientation of the map, and called this rotated version `self.truemap`. We replaced the house map in the Particle Filter Project with our maze to help us visualize this rotation. The image below shows the `self.map.data` after we rotated it 90 degrees clockwise and scaled it down. (The origin doesn't match, but now that we are not using `(x,y)` values, it doesn't matter; this is just for ease of visualization). 
 
