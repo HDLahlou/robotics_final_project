@@ -355,7 +355,6 @@ everything left unattended if you do choose to continue.
 
 - Visualizing the occupancy array relative to our map was a major challenge. When our `check_north` and other wall-checking functions returned the wrong values, it was hard to discern why. Eventually, we had to swap the names of some of the functions in order to match the rotation of occupancy array. If we were to do a similar project in the future, we would write code that visualizes these kinds of functions. Creating an overlay of the map that places a red dot on the edges of cells blocked by walls would have helped us a lot in checking the accuracy the wall-checkers, for example. Having the visual would've saved us the time comparing the printed booleans of the wall-checker to the map.
 
-- 
 
 ## Future Work
 
