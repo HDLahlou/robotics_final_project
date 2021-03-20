@@ -327,7 +327,7 @@ Another major challenge was how to detect which sides of any given node are bloc
 
 <img src="media/occupancy.png" alt="occupancy grid" width="400"/>
 
-We use `self.map.info.resolution` to calculate how many indexes of the `self.truemap` array is equal to the length of a single grid square, `self.gridsize`. The function `node_to_occ` is basically a modified  2D-array-indices to 1d-array-index function. It takes the array indices `[i][j]` of a given maze cell and calculates the corresponding index in `self.truemap` with `self.gridsize`. Then, we were finally able to correctly identify which edges of a given maze cell are blocked by walls.  
+We use `self.map.info.resolution` to calculate how many indices of the `self.truemap` array are equal to the length of a single grid square, `self.gridsize`. The function `node_to_occ` is basically a modified 2D-array-indices to 1d-array-index function. It takes the array indices `[i][j]` of a given maze cell and calculates the corresponding index in `self.truemap` with `self.gridsize`. Then, we can finally correctly identify which edges of a given maze cell are blocked by walls.  
 
 ## Takeaways
 
