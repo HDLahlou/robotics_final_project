@@ -32,22 +32,29 @@ The main components of our project are A* Search and Sensory Controls, a combina
     $ pipenv install
     ```
 
-4) Run our ```setup.launch``` file, which must be run from outside the virtual environment.
+4) Run ```catkin_make``` from your `catkin_ws/src` directory.
+    ```
+    $ cd ~/catkin_ws
+    $ catkin_make
+    ```
+    
+5) Run our ```setup.launch``` file, which must be run from outside the virtual environment.
     ```
     $ roslaunch robotics_final_project setup.launch
-
-5) Run our teleop controller.
     ```
+
+6) Open a new terminal, return to the project directory, launch a shell in the virtual environment containing the installed packages, and run our teleop controller.
+    ```
+    $ cd src/robotics_final_project
+    $ pipenv shell
     $ rosrun robotics_final_project player.py
     ```
 
-6) Launch a shell in the virtual environment containing the installed packages.
-    ```
-    $ pipenv shell
-    ```
+7) Unpause time in Gazebo.
 
-7) Run our ```run.launch``` file to begin the autonomous bot’s algorithm.
+8) Open a new terminal, launch a shell in the virtual environment again, and run our ```run.launch``` file to begin the autonomous bot’s algorithm.
     ```
+    # pipenv shell
     $ roslaunch robotics_final_project run.launch
     ```
 
@@ -241,7 +248,12 @@ demonstrated, along with movement controls, in the second recording: TurtleBot
 navigates the maze, quickly turning and retreating upon encountering two glowing
 spheres. For demonstration purposes, a cube has been placed to obstruct one of
 the pathways such that TurtleBot can only move back and forth between the two
-spheres which it indefinitely avoids.
+spheres which it indefinitely avoids. In addition, we stop the autonomous
+robot's movement ("Destination blocked") when it encounters a light in the cell
+it is about to enter. This is because of the way we handle our pathfinding;
+the A* algorithm blocks off a certain cell to prevent the robot from going through
+it, but blocking off the same cell as the destination will lead to the robot being
+unable to find a valid path.
 
 Code locations and descriptions
 - [`scripts/perception/light.py`](scripts/perception/light.py)
