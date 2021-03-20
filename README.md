@@ -365,7 +365,7 @@ The TurtleBot3 teleop package uses a control scheme that varies from typical gam
   
 ## Demo
   
-Our demo showcaseses a scenario where the autonomous bot attempts to pathfind to the player.
+Our demo showcases a scenario where the autonomous bot attempts to pathfind to the player.
 Upon reaching the corridor in which the player is located, the autonomous bot detects a light
 and immediately begins calculating a new path to the player, turning around to follow that path.
 When the player turns around and moves away, the autonomous bot detects a change in the player's
